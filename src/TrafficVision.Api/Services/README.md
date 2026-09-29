@@ -1,3 +1,3 @@
 # Application services
 
-Orchestration services for future video ingestion and analysis workflows belong here. The scaffold currently exposes only the health endpoint.
+Orchestration services for bus-video ingestion, RF-DETR inference, frame sampling, and result retrieval belong here. The scaffold currently exposes only the health endpoint.

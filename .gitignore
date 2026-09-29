@@ -38,5 +38,6 @@ data/output/*
 
 # Model artifacts are supplied locally and may be large
 *.onnx
+*.pt
 models/*
 !models/README.md

@@ -1,70 +1,66 @@
-# Traffic Vision architecture
+# Bus Passenger Vision architecture
 
 ## System boundary
 
 ```text
 Roboflow (external)
-  dataset / training / model selection / ONNX export
-                         |
-                         v
-                    traffic.onnx
+  dataset / training / RF-DETR export
+                    |
+                    v
+  bus-passengers-rfdetr-s-v1.onnx
 
 Browser                                      Server
 React + TypeScript  -- HTTP / JSON -->  ASP.NET Core Web API
-  video element                            |
+  onboard video                            |
   canvas/SVG overlay                       +-- Detection
-  upload and results UI                    +-- Tracking
-                                            +-- Direction
-                                            +-- Analytics
-                                                   |
-                                            Microsoft ONNX Runtime
+  camera/settings UI                       +-- Tracking
+                                            +-- DoorEvents
+                                            +-- PassengerAnalytics
+                                                     |
+                                              ONNX Runtime CPU
 ```
 
-The browser never executes the ONNX model. The server owns inference and will return structured metadata that the React application synchronizes with the original video's playback time.
+The cameras are fixed relative to the bus interior. The front view covers the seating area; the rear view looks toward the front door. The browser never executes the model. The server owns inference and returns timestamped metadata for synchronized rendering.
 
-## Responsibility boundaries
+## Detection
 
-### Detection
+Detection reports `sitting` and `standing` passengers for each sampled frame. The target model is RF-DETR Small v1, trained at 640×640 with stretch resize and a suggested 0.40 confidence threshold.
 
-Reports what is visible in a frame, including class, confidence, and bounding box. Model-specific preprocessing and output parsing remain unimplemented until the actual ONNX export is inspected.
+Implementation must begin by logging ONNX Runtime `InputMetadata` and `OutputMetadata`. Tensor names, shapes, data types, class indices, and output ordering must not be hard-coded from expectations. The export is expected—but not guaranteed—to use RGB/CHW float32 input, ImageNet normalization, normalized center-format boxes, and class logits requiring sigmoid.
 
-### Tracking
+## Tracking
 
-Associates detections across frames and assigns stable identities. Tracking is a separate stage so detection code does not own temporal identity.
+Tracking associates detections across frames, provides stable passenger IDs, and tolerates short occlusions. It supplies unique-passenger counts and the identities consumed by door-event logic.
 
-### Direction
+## Door events
 
-Classifies the motion of tracked objects. Because footage comes from a moving vehicle, observed screen motion combines camera motion and object motion. Raw changes in image coordinates are therefore not a valid direction classifier.
+Door events apply only to the rear camera. A configurable line or polygon near the front door classifies a track crossing inward as `boarded` and outward as `exited`. Each track must be counted once per event direction. Events include a timestamp and will later include a thumbnail.
 
-### Analytics
+## Passenger analytics
 
-Aggregates validated detection and tracking results into counts and traffic metrics. It does not perform inference or identity association.
-
-## Current request flow
-
-```text
-React starts
-    |
-    +-- GET /api/health
-            |
-            +-- 200 { status: "ok", ... }
-                    |
-                    +-- UI shows "Backend connected"
-```
-
-The selected video currently stays in the browser and is used only for local preview. There is no upload or analysis endpoint in this scaffold.
+Passenger analytics aggregates sitting, standing, boarded, exited, current occupancy, peak occupancy, and unique tracked passengers. It consumes validated detector, tracker, and door-event output rather than performing those responsibilities itself.
 
 ## Planned request flow
 
 ```text
 POST /api/videos
-    -> video identifier
+    -> video identifier + camera view
 
-POST /api/analysis/{videoId}
-    -> analysis identifier / state
+POST /api/videos/{id}/analyze
+    -> analysis state
 
-GET /api/analysis/{analysisId}
-    -> timestamped detection metadata
+GET /api/videos/{id}/results
+    -> timestamped detections, tracks, door events, and summary
 ```
 
-Job infrastructure, persistence, authentication, cloud deployment, tracking, direction logic, and video rendering are intentionally deferred.
+SignalR progress is optional. Database, authentication, cloud infrastructure, and generated annotated videos are outside the current POC scope.
+
+## Milestones
+
+1. **Still image:** inspect the model contract, run one bus frame in C#, and emit aligned annotated JPG and JSON.
+2. **Video frames:** decode at 15 FPS or fewer and emit timestamped detections.
+3. **Tracking:** assign stable IDs with a short lost-track tolerance.
+4. **Door events:** count rear-camera line crossings once per track.
+5. **React overlay:** render magenta sitting boxes, purple standing boxes, IDs, confidence, door line, events, and passenger summaries.
+
+Do not begin M2 until M1 boxes align with passengers. Do not fabricate analysis results in the UI.

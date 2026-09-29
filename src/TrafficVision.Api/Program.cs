@@ -1,3 +1,5 @@
+using TrafficVision.Api.Configuration;
+
 var builder = WebApplication.CreateBuilder(args);
 
 const string frontendCorsPolicy = "FrontendDevelopment";
@@ -8,6 +10,8 @@ var allowedOrigins = builder.Configuration
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.Configure<PassengerVisionOptions>(
+    builder.Configuration.GetSection(PassengerVisionOptions.SectionName));
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(frontendCorsPolicy, policy =>

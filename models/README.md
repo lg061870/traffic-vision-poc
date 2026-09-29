@@ -1,9 +1,9 @@
-# ONNX model location
+# RF-DETR ONNX model location
 
-Place the selected Roboflow-exported model here as:
+Place the verified Roboflow-exported bus-passenger model here as:
 
 ```text
-models/traffic.onnx
+models/bus-passengers-rfdetr-s-v1.onnx
 ```
 
-ONNX files are ignored by Git because they can be large and may have separate licensing or distribution requirements. Do not add a model until its input shape, output shape, image size, preprocessing, class mapping, and post-processing requirements are known.
+ONNX files are ignored by Git because they can be large and may have separate licensing or distribution requirements. Before implementing inference, record all input and output tensor names, shapes, and types from ONNX Runtime. Verify the class indices for `sitting` and `standing`; do not infer them from the project class list.

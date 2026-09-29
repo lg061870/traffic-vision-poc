@@ -1,41 +1,56 @@
-# Traffic Vision — Prueba de concepto (POC)
+# Bus Passenger Vision — Prueba de concepto (POC)
 
-Traffic Vision es una **prueba de concepto (POC)** para analizar videos de carretera capturados desde un vehículo en movimiento. Este primer hito establece una interfaz de demostración en React, una API en ASP.NET Core y la comunicación entre ambas aplicaciones. Todavía no ejecuta detección de objetos.
+Bus Passenger Vision es una **prueba de concepto (POC)** para analizar video de cámaras fijas dentro de un autobús. El objetivo es detectar pasajeros `sitting` y `standing`, mantener su identidad entre fotogramas y contar abordajes y salidas en la cámara orientada hacia la puerta delantera.
 
 > **Referencia institucional:** Promotora Costarricense de Innovación e Investigación.
 
 ## Estado actual
 
-- Espacio de trabajo en React + TypeScript basado en el diseño aprobado para la demostración.
-- Selección local de video, arrastrar y soltar, visualización de metadatos y vista previa en el navegador.
-- Estados vacíos explícitos para detecciones, seguimiento, dirección y analítica.
-- Endpoint `GET /api/health` en ASP.NET Core con indicador visible del estado de conexión.
-- Configuración de CORS para desarrollo y proxy de API mediante Vite.
-- Dependencia de ONNX Runtime para CPU instalada para un hito posterior.
-- Separación clara entre las capas de detección, seguimiento, dirección y analítica.
+- Interfaz React + TypeScript adaptada a cámaras internas de autobús.
+- Selector de cámara: frontal para el área de asientos y trasera para la puerta delantera.
+- Selección local, arrastrar y soltar, metadatos y vista previa del video.
+- Configuración local de umbral de confianza (0.40) y velocidad de procesamiento (15 FPS).
+- Editor visual de dos puntos para la línea de eventos de puerta en la cámara trasera.
+- Estados explícitos para detecciones, seguimiento, eventos de puerta y analítica de pasajeros.
+- Endpoint `GET /api/health` con indicador visible de conexión entre frontend y backend.
+- Dependencia `Microsoft.ML.OnnxRuntime` para inferencia futura en CPU.
+- Ruta configurable para `models/bus-passengers-rfdetr-s-v1.onnx`.
 
-La interfaz no muestra resultados de IA simulados. La acción de análisis explica claramente que la inferencia todavía no está conectada.
+La interfaz no genera resultados de IA simulados. La inferencia permanece deshabilitada hasta recibir e inspeccionar el archivo ONNX real.
+
+## Modelo previsto
+
+- Proyecto Roboflow: `guillermo-jimenez/bus-passenger-detection`
+- Versión del conjunto de datos: v1
+- Arquitectura: RF-DETR Small
+- Tamaño de entrenamiento: 640×640 con redimensionamiento por estiramiento
+- Clases: `sitting` y `standing`
+- Umbral sugerido: 0.40
+
+Los nombres, tipos y dimensiones de los tensores, así como el mapa real de clases, deberán obtenerse de `InputMetadata` y `OutputMetadata` del modelo. No se implementará un parser basado únicamente en supuestos.
 
 ## Arquitectura
 
 ```text
-Navegador
-  React + TypeScript
+Cámara fija del autobús
           |
-          | HTTP / JSON
           v
-  API web ASP.NET Core
-          |
-     Servicio de detección (futuro)
-          |
-  Microsoft ONNX Runtime
-          |
-  traffic.onnx exportado desde Roboflow (futuro)
+React + TypeScript  -- HTTP / JSON -->  ASP.NET Core
+  video + overlay                         |
+                                  RF-DETR / ONNX Runtime
+                                           |
+                    +----------------------+-------------------+
+                    |                      |                   |
+                Detección             Seguimiento      Eventos de puerta
+                    |                      |                   |
+                    +----------------------+-------------------+
+                                           |
+                                  Analítica de pasajeros
 ```
 
-El entrenamiento, la selección del modelo y la exportación a ONNX mediante Roboflow se realizan fuera de este repositorio. En el futuro, la aplicación combinará el video original con metadatos de detección sincronizados por tiempo y los dibujará mediante una capa Canvas o SVG. El modelo no se ejecutará directamente en el navegador.
+El navegador no ejecutará el modelo. ASP.NET Core realizará la inferencia y devolverá metadatos sincronizados por tiempo para que React dibuje las cajas, los identificadores de seguimiento y la línea de puerta.
 
-Consulte [docs/architecture.md](docs/architecture.md) para conocer los límites de responsabilidad y el flujo previsto de las solicitudes.
+Consulte [docs/architecture.md](docs/architecture.md) para ver los límites de cada capa y la secuencia de hitos.
 
 ## Tecnologías
 
@@ -46,31 +61,17 @@ Consulte [docs/architecture.md](docs/architecture.md) para conocer los límites 
 - TypeScript
 - Vite
 
-La aplicación no contiene servicios, dependencias, scripts ni entornos de ejecución de Python.
-
-## Requisitos
-
-- .NET SDK 10.0 o posterior
-- Node.js 20 o posterior
-- npm 10 o posterior
+La aplicación no utiliza Python en tiempo de ejecución. Una conversión offline de pesos `.pt` a ONNX solo se realizará si se autoriza expresamente.
 
 ## Ejecutar el backend
-
-Desde la raíz del repositorio:
 
 ```powershell
 dotnet run --project src/TrafficVision.Api
 ```
 
-La API de desarrollo escucha en `http://localhost:5169`. Puede comprobarla en:
-
-```text
-GET http://localhost:5169/api/health
-```
+La API de desarrollo escucha en `http://localhost:5169`.
 
 ## Ejecutar el frontend
-
-En una segunda terminal:
 
 ```powershell
 cd src/traffic-vision-web
@@ -78,7 +79,7 @@ npm install
 npm run dev
 ```
 
-Abra `http://localhost:5173`. Vite redirige las solicitudes a `/api` hacia la API de ASP.NET Core.
+Abra `http://localhost:5173`. Vite redirige `/api` hacia ASP.NET Core.
 
 ## Compilar
 
@@ -88,36 +89,29 @@ cd src/traffic-vision-web
 npm run build
 ```
 
-## Estructura del repositorio
+## Hitos de visión
 
-```text
-TrafficVision.sln
-src/
-  TrafficVision.Api/
-    Analytics/
-    Controllers/
-    Detection/
-    Direction/
-    Models/
-    Services/
-    Tracking/
-  traffic-vision-web/
-    public/
-    src/
-      components/
-      services/
-      types/
-data/
-  samples/
-  output/
-docs/
-models/
-```
+1. Inspeccionar el ONNX y ejecutar una imagen fija en C#, produciendo JPG anotado y JSON.
+2. Decodificar y procesar video a un máximo inicial de 15 FPS.
+3. Mantener identificadores de pasajeros mediante seguimiento con tolerancia a oclusiones.
+4. Contar `boarded` y `exited` al cruzar la línea de puerta en la cámara trasera.
+5. Sincronizar los resultados con el video y dibujarlos en React.
 
-## Archivos del modelo
+No se avanzará al procesamiento de video hasta comprobar que las cajas de M1 coinciden correctamente con las personas.
 
-Los archivos `.onnx` de gran tamaño están excluidos de Git. Cuando se seleccione el modelo, siga las instrucciones de [models/README.md](models/README.md) y coloque el archivo local en `models/traffic.onnx`.
+## Archivos del modelo y pruebas
 
-## Próximo hito
+El modelo debe colocarse en `models/bus-passengers-rfdetr-s-v1.onnx`. Los modelos, videos y salidas generadas están excluidos de Git.
 
-Seleccionar e inspeccionar un modelo ONNX preentrenado apropiado para detección de tránsito y comprobar una primera inferencia sobre una imagen fija desde C#. Los formatos de los tensores de entrada y salida, el preprocesamiento, el mapa de clases y el posprocesamiento deberán obtenerse del modelo real antes de implementar la inferencia.
+Los recursos previstos son:
+
+- `bus_interior_cctv.mp4`: clip principal, 640 px de ancho y 15 FPS.
+- `bus_interior_dark.mp4`: prueba de baja iluminación.
+- `bus_stop_cctv.mp4`: prueba posterior fuera del autobús.
+- `frames/bus_XXXX.jpg`: fotogramas para validar M1.
+
+## Atribución
+
+- Video interior del autobús por **dae jeung kim**, Pixabay, video 142755: https://pixabay.com/users/kimdaejeung-7703165/
+- Video de parada de autobús por **Expatsiam**, Pixabay, video 31967: https://pixabay.com/users/expatsiam-1490930/
+- Los datos de entrenamiento incluyen los conjuntos de Roboflow Universe “Passenger” (Deakin) y “passenger” (MSU), ambos bajo licencia CC BY 4.0.
