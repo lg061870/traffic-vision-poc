@@ -1,74 +1,76 @@
-# Traffic Vision POC
+# Traffic Vision — Prueba de concepto (POC)
 
-Traffic Vision is a proof-of-concept application for analyzing road footage captured from a moving vehicle. This milestone establishes a presentation-quality React workspace, an ASP.NET Core API, and their development-time connection. It does **not** perform object detection yet.
+Traffic Vision es una **prueba de concepto (POC)** para analizar videos de carretera capturados desde un vehículo en movimiento. Este primer hito establece una interfaz de demostración en React, una API en ASP.NET Core y la comunicación entre ambas aplicaciones. Todavía no ejecuta detección de objetos.
 
-## Current status
+> **Referencia institucional:** Promotora Costarricense de Innovación e Investigación.
 
-- React + TypeScript upload workspace based on the approved demo mockup
-- Local video selection, drag-and-drop, metadata display, and browser preview
-- Explicit empty states for detections, tracking, direction, and analytics
-- ASP.NET Core `GET /api/health` endpoint with visible frontend connection status
-- Development CORS and Vite API proxy configuration
-- ONNX Runtime CPU dependency installed for a later milestone
-- Detection, tracking, direction, and analytics layers kept separate
+## Estado actual
 
-No fake AI results are shown. The analysis action explains that inference is not connected yet.
+- Espacio de trabajo en React + TypeScript basado en el diseño aprobado para la demostración.
+- Selección local de video, arrastrar y soltar, visualización de metadatos y vista previa en el navegador.
+- Estados vacíos explícitos para detecciones, seguimiento, dirección y analítica.
+- Endpoint `GET /api/health` en ASP.NET Core con indicador visible del estado de conexión.
+- Configuración de CORS para desarrollo y proxy de API mediante Vite.
+- Dependencia de ONNX Runtime para CPU instalada para un hito posterior.
+- Separación clara entre las capas de detección, seguimiento, dirección y analítica.
 
-## Architecture
+La interfaz no muestra resultados de IA simulados. La acción de análisis explica claramente que la inferencia todavía no está conectada.
+
+## Arquitectura
 
 ```text
-Browser
+Navegador
   React + TypeScript
           |
           | HTTP / JSON
           v
-  ASP.NET Core Web API
+  API web ASP.NET Core
           |
-     Detection service (future)
+     Servicio de detección (futuro)
           |
   Microsoft ONNX Runtime
           |
-  Roboflow-exported traffic.onnx (future)
+  traffic.onnx exportado desde Roboflow (futuro)
 ```
 
-Roboflow training, model selection, and ONNX export happen outside this repository. The frontend will eventually combine the original video with timestamped detection metadata using a canvas or SVG overlay; it will not run the model directly.
+El entrenamiento, la selección del modelo y la exportación a ONNX mediante Roboflow se realizan fuera de este repositorio. En el futuro, la aplicación combinará el video original con metadatos de detección sincronizados por tiempo y los dibujará mediante una capa Canvas o SVG. El modelo no se ejecutará directamente en el navegador.
 
-See [docs/architecture.md](docs/architecture.md) for the responsibility boundaries and future request flow.
+Consulte [docs/architecture.md](docs/architecture.md) para conocer los límites de responsabilidad y el flujo previsto de las solicitudes.
 
-## Technology stack
+## Tecnologías
 
 - .NET 10 / ASP.NET Core Web API
 - C#
-- Microsoft.ML.OnnxRuntime (CPU)
+- Microsoft.ML.OnnxRuntime para CPU
 - React
 - TypeScript
 - Vite
 
-There is no Python runtime, service, dependency, or script in this application.
+La aplicación no contiene servicios, dependencias, scripts ni entornos de ejecución de Python.
 
-## Prerequisites
+## Requisitos
 
-- .NET SDK 10.0 or newer
-- Node.js 20 or newer
-- npm 10 or newer
+- .NET SDK 10.0 o posterior
+- Node.js 20 o posterior
+- npm 10 o posterior
 
-## Run the backend
+## Ejecutar el backend
 
-From the repository root:
+Desde la raíz del repositorio:
 
 ```powershell
 dotnet run --project src/TrafficVision.Api
 ```
 
-The development API listens on `http://localhost:5169`. Verify it at:
+La API de desarrollo escucha en `http://localhost:5169`. Puede comprobarla en:
 
 ```text
 GET http://localhost:5169/api/health
 ```
 
-## Run the frontend
+## Ejecutar el frontend
 
-In a second terminal:
+En una segunda terminal:
 
 ```powershell
 cd src/traffic-vision-web
@@ -76,9 +78,9 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. Vite proxies `/api` calls to the ASP.NET Core API.
+Abra `http://localhost:5173`. Vite redirige las solicitudes a `/api` hacia la API de ASP.NET Core.
 
-## Build
+## Compilar
 
 ```powershell
 dotnet build TrafficVision.sln
@@ -86,7 +88,7 @@ cd src/traffic-vision-web
 npm run build
 ```
 
-## Repository structure
+## Estructura del repositorio
 
 ```text
 TrafficVision.sln
@@ -112,10 +114,10 @@ docs/
 models/
 ```
 
-## Model files
+## Archivos del modelo
 
-Large `.onnx` files are intentionally ignored by Git. When a model is selected, follow [models/README.md](models/README.md) and place the local file at `models/traffic.onnx`.
+Los archivos `.onnx` de gran tamaño están excluidos de Git. Cuando se seleccione el modelo, siga las instrucciones de [models/README.md](models/README.md) y coloque el archivo local en `models/traffic.onnx`.
 
-## Next milestone
+## Próximo hito
 
-Select and inspect one appropriate pretrained traffic-detection ONNX model, then prove a single still-image inference in C#. Input/output tensor formats, preprocessing, class mappings, and post-processing must be derived from that actual model before implementation.
+Seleccionar e inspeccionar un modelo ONNX preentrenado apropiado para detección de tránsito y comprobar una primera inferencia sobre una imagen fija desde C#. Los formatos de los tensores de entrada y salida, el preprocesamiento, el mapa de clases y el posprocesamiento deberán obtenerse del modelo real antes de implementar la inferencia.
