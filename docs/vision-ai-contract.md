@@ -1,41 +1,60 @@
 # Vision AI handoff contract
 
-This document records the decisions supplied for the Bus Passenger Vision POC. ONNX metadata remains authoritative and must be inspected from the actual exported file before the parser is implemented.
+This document records the verified model contract and acceptance results for the Bus Passenger Vision POC.
 
-## Model and preprocessing
+## Export provenance
 
 - Roboflow model: `guillermo-jimenez/bus-passenger-detection-1-rfdetr-small-t1`
 - Architecture: RF-DETR Small, Apache-2.0
-- Training resolution: 640×640 stretch resize, RGB, NCHW float32
-- Candidate normalization pending export verification: divide by 255, then ImageNet mean `(0.485, 0.456, 0.406)` and standard deviation `(0.229, 0.224, 0.225)`
-- Hosted inference class IDs: `0 = sitting`, `1 = standing`; raw ONNX logit columns must still be verified empirically
-- Candidate decoding pending export verification: normalized `cxcywh`, sigmoid per class, threshold 0.40, no NMS unless testing exposes duplicates
+- Export date: 2026-09-29
+- Export package: RF-DETR 1.11.0
+- ONNX opset: 17
+- Source `weights.pt` SHA-256: `560DD9CDECCFF8ED0312C3200CCC3E8AFFF2AC6CB979B37F5AC6DD5832CFBBF7`
+- `bus-passengers-rfdetr-s-v1.onnx` SHA-256: `DDBFBDD9315B9549905CAF5EE4E5C9E27F89DF15A9921217BDA4225E9CE07E6E`
+- ONNX size: 123,469,705 bytes
 
-## Golden frame
+## Authoritative tensor contract
 
-The reference frame is 640×360. Guillermo still needs to identify its source frame number.
+| Direction | Name | Type | Shape | Meaning |
+|---|---|---|---|---|
+| Input | `input` | float32 | `[1,3,640,640]` | RGB, NCHW, stretch resize |
+| Output | `dets` | float32 | `[1,300,4]` | normalized `cx,cy,w,h` |
+| Output | `labels` | float32 | `[1,300,3]` | per-class logits; apply sigmoid |
 
-```json
-[
-  {"class":"sitting",  "x":205.0, "y":188.5, "width":118, "height":217, "confidence":0.796},
-  {"class":"sitting",  "x":470.5, "y":174.5, "width":85,  "height":157, "confidence":0.727},
-  {"class":"standing", "x":67.5,  "y":67.5,  "width":93,  "height":101, "confidence":0.580},
-  {"class":"standing", "x":187.0, "y":102.0, "width":68,  "height":44,  "confidence":0.557}
-]
-```
+Preprocessing divides RGB pixels by 255 and applies ImageNet mean `(0.485, 0.456, 0.406)` and standard deviation `(0.229, 0.224, 0.225)`. Coordinates are scaled from normalized boxes to the original image dimensions. No NMS is applied.
 
-The two sitting detections are the reliable parser check. The low-confidence standing results are known model-v1 behavior. M1 passes when boxes reproduce the hosted result within approximately ±10 px and ±0.05 confidence.
+The output-column mapping was established empirically rather than inferred:
+
+- Column 0: unused empty `passenger` class
+- Column 1: `sitting` (`class_id 0` in hosted inference)
+- Column 2: `standing` (`class_id 1` in hosted inference)
+
+## Golden-frame validation
+
+Both images are 640×360 and were processed through the C# ONNX Runtime implementation.
+
+| Frame | Class | Hosted reference | C# result | Status |
+|---|---|---:|---:|---|
+| `bus_0010.jpg` | sitting | 0.897 · `(399,122,495,279)` | 0.88 · `(401,123,495,279)` | Pass |
+| `bus_0010.jpg` | sitting | 0.870 · `(126,116,249,340)` | 0.87 · `(126,116,249,340)` | Pass |
+| `bus_0043.jpg` | sitting | 0.799 · `(420,93,513,247)` | 0.82 · `(416,93,513,247)` | Pass |
+| `bus_0043.jpg` | sitting | 0.700 · `(142,78,261,297)` | 0.73 · `(142,78,261,296)` | Pass |
+
+All primary boxes pass the ±10 px and ±0.05 confidence acceptance rule. Optional detections near 0.50 also reproduced. Results below 0.50 may appear in the application because its operational threshold is 0.40.
+
+Generated local artifacts:
+
+- `data/output/bus_0010-annotated.jpg`
+- `data/output/bus_0010-result.json`
+- `data/output/bus_0043-annotated.jpg`
+- `data/output/bus_0043-result.json`
 
 ## Camera assets
 
-- `bus_interior_cctv.mp4`: front/seating role
-- `bus_interior_dark.mp4`: low-light front/seating test
-- `bus_stop_cctv.mp4`: outside footage, not a target camera
+- `bus_interior_cctv.mp4`: 640×360, 15 FPS, 45.53 s; front/seating role
+- `bus_interior_dark.mp4`: 640×360, 15 FPS, 45.53 s; low-light front/seating test
+- `bus_stop_cctv.mp4`: 640×360, 15 FPS, 37.80 s; outside footage, not a target camera
 - No real rear/door-camera clip is available yet. Door events will first be unit-tested with synthetic tracks.
-
-## Result shapes
-
-Still-image and video results follow the JSON examples in the Vision AI response. The API contract will be finalized alongside M1 so its coordinates and class scores are backed by real inference rather than fixtures displayed as results.
 
 ## Attribution
 
@@ -46,8 +65,7 @@ Still-image and video results follow the JSON examples in the Vision AI response
 
 ## Still pending
 
-1. The ONNX file (or `.pt` checkpoint for the approved one-time conversion).
-2. Authoritative ONNX input/output metadata and empirical class-logit mapping.
-3. SHA-256 checksum and export date.
-4. The golden frame filename/frame number.
-5. A real rear-door clip and manually verified boarding/exit totals.
+1. Video decoding and batched/timestamped frame processing (M2).
+2. Tracking and synthetic door-crossing validation (M3–M4).
+3. A real rear-door clip and manually verified boarding/exit totals.
+4. React overlay integration with real API output (M5).

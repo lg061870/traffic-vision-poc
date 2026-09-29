@@ -1,4 +1,5 @@
 using TrafficVision.Api.Configuration;
+using TrafficVision.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,7 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.Configure<PassengerVisionOptions>(
     builder.Configuration.GetSection(PassengerVisionOptions.SectionName));
+builder.Services.AddSingleton<PassengerImageAnalyzer>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(frontendCorsPolicy, policy =>

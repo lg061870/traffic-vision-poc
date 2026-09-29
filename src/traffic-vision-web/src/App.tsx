@@ -180,7 +180,7 @@ function App() {
     if (!selectedFile) return
     setAnalysisMessage(
       backendStatus === 'connected'
-        ? 'The RF-DETR model is not installed yet. No passenger analysis has been run.'
+        ? 'Still-image inference is verified. Video analysis is the next implementation milestone; no video analysis has been run.'
         : 'Start the backend before passenger analysis can be connected. No analysis has been run.',
     )
   }
@@ -450,7 +450,7 @@ function App() {
 
       <footer className="footer">
         <span>Bus Passenger Vision POC</span>
-        <span>No AI results generated · model integration pending</span>
+        <span>Still-image inference verified · video pipeline pending</span>
       </footer>
 
       {settingsOpen && (

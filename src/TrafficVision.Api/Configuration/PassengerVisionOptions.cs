@@ -12,11 +12,24 @@ public sealed class PassengerVisionOptions
 
     public int InitialPassengers { get; set; }
 
-    public string[] ClassNames { get; set; } = ["sitting", "standing"];
+    public List<PassengerClassOptions> Classes { get; set; } =
+    [
+        new() { ClassId = 0, Name = "sitting", OutputIndex = 1 },
+        new() { ClassId = 1, Name = "standing", OutputIndex = 2 }
+    ];
 
     public TrackingOptions Tracking { get; set; } = new();
 
     public DoorEventOptions DoorEvents { get; set; } = new();
+}
+
+public sealed class PassengerClassOptions
+{
+    public int ClassId { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    public int OutputIndex { get; set; }
 }
 
 public sealed class TrackingOptions
