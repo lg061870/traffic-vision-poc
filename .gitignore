@@ -1,0 +1,42 @@
+# .NET
+**/bin/
+**/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+
+# Node / Vite
+**/node_modules/
+**/dist/
+**/.vite/
+*.tsbuildinfo
+*.local
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs and local configuration
+*.log
+.env
+.env.*
+!.env.example
+
+# Road-video inputs and generated artifacts
+*.mp4
+*.mov
+*.avi
+*.mkv
+data/samples/*
+!data/samples/README.md
+data/output/*
+!data/output/README.md
+
+# Model artifacts are supplied locally and may be large
+*.onnx
+models/*
+!models/README.md
