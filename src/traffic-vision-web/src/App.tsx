@@ -47,13 +47,15 @@ const ALLOWED_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv']
 
 type CameraView = 'front' | 'rear'
 type DoorPoint = { x: number; y: number }
+type DoorEditorPhase = 'line' | 'inside' | null
 
 const passengerMetrics = [
   { label: 'Sitting', icon: Armchair, tone: 'magenta' },
   { label: 'Standing', icon: PersonStanding, tone: 'purple' },
+  { label: 'Visible now', icon: Users, tone: 'blue' },
   { label: 'Boarded', icon: LogIn, tone: 'green' },
   { label: 'Exited', icon: LogOut, tone: 'orange' },
-  { label: 'Current occupancy', icon: Users, tone: 'blue' },
+  { label: 'Event occupancy', icon: UserRoundCheck, tone: 'violet' },
   { label: 'Peak occupancy', icon: UserRoundCheck, tone: 'violet' },
 ] as const
 
@@ -93,8 +95,13 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.4)
   const [processingFps, setProcessingFps] = useState(15)
-  const [doorLine, setDoorLine] = useState<DoorPoint[]>([])
-  const [editingDoorLine, setEditingDoorLine] = useState(false)
+  const [initialPassengers, setInitialPassengers] = useState(0)
+  const [doorLine, setDoorLine] = useState<DoorPoint[]>([
+    { x: 0.1, y: 0.7 },
+    { x: 0.9, y: 0.7 },
+  ])
+  const [insidePoint, setInsidePoint] = useState<DoorPoint>({ x: 0.5, y: 0.35 })
+  const [doorEditorPhase, setDoorEditorPhase] = useState<DoorEditorPhase>(null)
 
   const videoUrl = useMemo(
     () => (selectedFile ? URL.createObjectURL(selectedFile) : null),
@@ -125,10 +132,6 @@ function App() {
   useEffect(() => {
     void checkBackend()
   }, [checkBackend])
-
-  useEffect(() => {
-    if (!settingsOpen) setEditingDoorLine(false)
-  }, [settingsOpen])
 
   const acceptFile = (file: File) => {
     const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
@@ -169,7 +172,7 @@ function App() {
 
   const selectCamera = (view: CameraView) => {
     setCameraView(view)
-    setEditingDoorLine(false)
+    setDoorEditorPhase(null)
     setAnalysisMessage(null)
   }
 
@@ -186,20 +189,26 @@ function App() {
     if (cameraView !== 'rear') return
     setSettingsOpen(false)
     setDoorLine([])
-    setEditingDoorLine(true)
+    setDoorEditorPhase('line')
   }
 
   const handleDoorLineClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (!editingDoorLine || cameraView !== 'rear') return
+    if (!doorEditorPhase || cameraView !== 'rear') return
     const bounds = event.currentTarget.getBoundingClientRect()
     const point = {
       x: Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width)),
       y: Math.min(1, Math.max(0, (event.clientY - bounds.top) / bounds.height)),
     }
 
+    if (doorEditorPhase === 'inside') {
+      setInsidePoint(point)
+      setDoorEditorPhase(null)
+      return
+    }
+
     setDoorLine((current) => {
       if (current.length === 1) {
-        setEditingDoorLine(false)
+        setDoorEditorPhase('inside')
         return [current[0], point]
       }
       return [point]
@@ -325,11 +334,11 @@ function App() {
               </div>
               <span className="stage-badge">{cameraView === 'front' ? 'Front · seating area' : 'Rear · front door'}</span>
             </div>
-            <div className={`video-stage${editingDoorLine ? ' video-stage--editing' : ''}`}>
+            <div className={`video-stage${doorEditorPhase ? ' video-stage--editing' : ''}`}>
               {videoUrl ? (
                 <video
                   src={videoUrl}
-                  controls={!editingDoorLine}
+                  controls={!doorEditorPhase}
                   preload="metadata"
                   onLoadedMetadata={(event) => setVideoDuration(event.currentTarget.duration)}
                 >
@@ -352,12 +361,19 @@ function App() {
                     <line x1={doorLine[0].x * 100} y1={doorLine[0].y * 100} x2={doorLine[1].x * 100} y2={doorLine[1].y * 100} />
                   )}
                   {doorLine.map((point, index) => <circle key={index} cx={point.x * 100} cy={point.y * 100} r="1.1" />)}
+                  {doorLine.length === 2 && <circle className="inside-point" cx={insidePoint.x * 100} cy={insidePoint.y * 100} r="1.5" />}
                 </svg>
               )}
 
-              {editingDoorLine && (
-                <div className="door-line-editor" onClick={handleDoorLineClick} role="button" tabIndex={0} aria-label="Choose two points for the door line">
-                  <span><Crosshair size={18} />{doorLine.length === 0 ? 'Click the first door-line point' : 'Click the second door-line point'}</span>
+              {doorEditorPhase && (
+                <div className="door-line-editor" onClick={handleDoorLineClick} role="button" tabIndex={0} aria-label="Configure the door counting line and inside side">
+                  <span><Crosshair size={18} />{
+                    doorEditorPhase === 'inside'
+                      ? 'Click the side of the line that is inside the bus'
+                      : doorLine.length === 0
+                        ? 'Click the first door-line point'
+                        : 'Click the second door-line point'
+                  }</span>
                 </div>
               )}
             </div>
@@ -365,7 +381,7 @@ function App() {
               <span><CheckCircle2 size={15} />Original footage</span>
               <span className="class-legend"><i className="legend-dot legend-dot--sitting" />Sitting</span>
               <span className="class-legend"><i className="legend-dot legend-dot--standing" />Standing</span>
-              {cameraView === 'rear' && <span><Crosshair size={15} />{doorLine.length === 2 ? 'Door line configured' : 'Door line not configured'}</span>}
+              {cameraView === 'rear' && <span><Crosshair size={15} />{doorLine.length === 2 ? 'Door line + inside side configured' : 'Door line not configured'}</span>}
             </div>
           </section>
 
@@ -426,7 +442,9 @@ function App() {
           <p>
             Bus interior video by <a href="https://pixabay.com/users/kimdaejeung-7703165/" target="_blank" rel="noreferrer">dae jeung kim</a> from Pixabay (video 142755). Bus stop video by <a href="https://pixabay.com/users/expatsiam-1490930/" target="_blank" rel="noreferrer">Expatsiam</a> from Pixabay (video 31967).
           </p>
-          <p>Training data includes Roboflow Universe datasets “Passenger” (Deakin) and “passenger” (MSU), both licensed under CC BY 4.0.</p>
+          <p>
+            Training data includes Roboflow Universe datasets <a href="https://universe.roboflow.com/deakin-07shj/passenger-mmpbi" target="_blank" rel="noreferrer">“Passenger” (Deakin)</a> and <a href="https://universe.roboflow.com/msu-4qpkq/passenger-utkuj" target="_blank" rel="noreferrer">“passenger” (MSU)</a>, both licensed under CC BY 4.0.
+          </p>
         </section>
       </main>
 
@@ -459,13 +477,19 @@ function App() {
               <small>15 FPS is the default upper limit for the POC.</small>
             </label>
 
+            <label className="setting-field">
+              <span><strong>Initial passengers</strong><output>{initialPassengers}</output></span>
+              <input type="number" min="0" step="1" value={initialPassengers} onChange={(event) => setInitialPassengers(Math.max(0, Number.parseInt(event.target.value || '0', 10)))} />
+              <small>Event occupancy starts here, then adds boarded passengers and subtracts exits.</small>
+            </label>
+
             <div className="setting-field">
               <span><strong>Rear-camera door line</strong></span>
               <p className="coordinate-readout">
-                {doorLine.length === 2 ? `${formatPoint(doorLine[0])} → ${formatPoint(doorLine[1])}` : 'Not configured'}
+                {doorLine.length === 2 ? `${formatPoint(doorLine[0])} → ${formatPoint(doorLine[1])} · inside near ${formatPoint(insidePoint)}` : 'Not configured'}
               </p>
               <button className="button button--secondary" type="button" disabled={cameraView !== 'rear'} onClick={startDoorLineEdit}>
-                <Crosshair size={17} />{doorLine.length === 2 ? 'Redraw on video' : 'Choose two points on video'}
+                <Crosshair size={17} />{doorLine.length === 2 ? 'Redraw line and inside side' : 'Configure on video'}
               </button>
               <small>{cameraView === 'rear' ? 'The line is used to classify boarded and exited tracks.' : 'Select the Rear (front door) camera view to configure door events.'}</small>
             </div>

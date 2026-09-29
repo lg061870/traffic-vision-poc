@@ -800,6 +800,12 @@ input:focus-visible {
   vector-effect: non-scaling-stroke;
 }
 
+.door-line-overlay .inside-point {
+  fill: #22c55e;
+  stroke: #ffffff;
+  stroke-width: 0.65;
+}
+
 .door-line-editor {
   position: absolute;
   z-index: 4;
@@ -1156,7 +1162,8 @@ input:focus-visible {
   accent-color: #1478f2;
 }
 
-.setting-field select {
+.setting-field select,
+.setting-field input[type="number"] {
   min-height: 40px;
   margin-top: 10px;
   padding: 0 10px;

@@ -32,13 +32,15 @@ Implementation must begin by logging ONNX Runtime `InputMetadata` and `OutputMet
 
 Tracking associates detections across frames, provides stable passenger IDs, and tolerates short occlusions. It supplies unique-passenger counts and the identities consumed by door-event logic.
 
+POC defaults are IoU matching at 0.30, confirmation after three consecutive detections, and deletion after 30 missed frames at 15 FPS. These values are configuration, not detector assumptions.
+
 ## Door events
 
-Door events apply only to the rear camera. A configurable line or polygon near the front door classifies a track crossing inward as `boarded` and outward as `exited`. Each track must be counted once per event direction. Events include a timestamp and will later include a thumbnail.
+Door events apply only to the rear camera. The user selects two line points and then selects the side considered inside the bus. Until configured, the line is horizontal at 70% of frame height and inside is above it. Crossing uses the bottom-center (feet point) of each box, a ±20 px hysteresis band, three stable frames beyond the band, and a three-second per-track cooldown. Each track can count at most one boarding and one exit. Events include a timestamp and will later include a thumbnail.
 
 ## Passenger analytics
 
-Passenger analytics aggregates sitting, standing, boarded, exited, current occupancy, peak occupancy, and unique tracked passengers. It consumes validated detector, tracker, and door-event output rather than performing those responsibilities itself.
+Passenger analytics keeps two concepts separate: `visible now` is the front-camera sitting-plus-standing count, while event occupancy is initial passengers plus boarded minus exited, clamped at zero. The POC does not reconcile them. It also aggregates peak occupancy and unique tracked passengers from validated detector, tracker, and door-event output.
 
 ## Planned request flow
 
