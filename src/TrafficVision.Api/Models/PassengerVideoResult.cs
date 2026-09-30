@@ -47,9 +47,18 @@ public sealed record PassengerVideoResult(
     double ProcessingFps,
     double ElapsedSeconds,
     string Model,
+    DateTimeOffset AnalyzedAtUtc,
+    PassengerVideoSettings Settings,
     IReadOnlyList<PassengerVideoFrame> Frames,
     IReadOnlyList<PassengerDoorEvent> DoorEvents,
     PassengerVideoSummary Summary);
+
+public sealed record PassengerVideoSettings(
+    float ConfidenceThreshold,
+    int InitialPassengers,
+    NormalizedPoint DoorLineStart,
+    NormalizedPoint DoorLineEnd,
+    NormalizedPoint InsidePoint);
 
 public sealed record VideoAnalysisAccepted(
     Guid JobId,

@@ -539,6 +539,35 @@ input:focus-visible {
   color: #fff;
 }
 
+.demo-list {
+  display: grid;
+  max-height: 232px;
+  gap: 7px;
+  overflow-y: auto;
+}
+
+.camera-selector:disabled .camera-option {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.door-event-toast {
+  position: absolute;
+  z-index: 5;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.door-event-toast .event-direction {
+  font-size: 0.72rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
 .selected-file {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -852,8 +881,8 @@ input:focus-visible {
 
 .door-line-overlay line {
   stroke: #ffcd37;
-  stroke-width: 0.85;
-  stroke-dasharray: 2 1;
+  stroke-width: 2.5;
+  stroke-dasharray: 12 6;
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
   vector-effect: non-scaling-stroke;
 }
@@ -861,14 +890,14 @@ input:focus-visible {
 .door-line-overlay circle {
   fill: #ffcd37;
   stroke: #17283b;
-  stroke-width: 0.35;
+  stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }
 
 .door-line-overlay .inside-point {
   fill: #22c55e;
   stroke: #ffffff;
-  stroke-width: 0.65;
+  stroke-width: 2;
 }
 
 .door-line-editor {
@@ -1122,9 +1151,12 @@ input:focus-visible {
 .track-grid small { grid-column: 1 / -1; color: #7c8da0; font-size: 0.62rem; }
 
 .door-events { display: grid; gap: 7px; padding-top: 16px; }
-.door-events article { display: grid; grid-template-columns: 80px 1fr auto; align-items: center; gap: 12px; padding: 9px 11px; background: #f6f9fc; border-radius: 8px; }
+.door-event { display: grid; grid-template-columns: 80px 1fr auto auto; align-items: center; gap: 12px; padding: 9px 11px; color: inherit; font: inherit; text-align: left; background: #f6f9fc; border: 1px solid transparent; border-radius: 8px; cursor: pointer; opacity: 0.6; }
+.door-event:hover { border-color: #cbd9e8; }
+.door-event--past { opacity: 1; }
 .door-events p { color: #74859a; font-size: 0.75rem; }
 .door-events strong, .door-events time { font-size: 0.72rem; }
+.door-events small { color: #66778e; font-size: 0.68rem; }
 .event-direction { padding: 4px 7px; border-radius: 6px; font-size: 0.64rem; font-weight: 800; text-align: center; text-transform: uppercase; }
 .event-direction--boarded { color: #167b48; background: #e5f7ed; }
 .event-direction--exited { color: #b96900; background: #fff1d8; }

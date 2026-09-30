@@ -41,18 +41,24 @@ import {
 import { BackendStatusPill } from './components/BackendStatusPill'
 import {
   cancelVideoAnalysis,
+  demoVideoUrl,
+  getDemoVideoResult,
   getHealth,
   getVideoAnalysis,
+  listDemoVideos,
   startVideoAnalysis,
 } from './services/api'
 import type { BackendStatus } from './types/health'
 import type {
+  DemoVideo,
   PassengerVideoFrame,
+  PassengerVideoResult,
   VideoAnalysisJob,
 } from './types/videoAnalysis'
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024
 const ALLOWED_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv']
+const RECENT_EVENT_SECONDS = 2.5
 
 type CameraView = 'front' | 'rear'
 type DoorPoint = { x: number; y: number }
@@ -118,17 +124,25 @@ function App() {
   ])
   const [insidePoint, setInsidePoint] = useState<DoorPoint>({ x: 0.5, y: 0.35 })
   const [doorEditorPhase, setDoorEditorPhase] = useState<DoorEditorPhase>(null)
+  const [videoSize, setVideoSize] = useState<{ width: number; height: number } | null>(null)
+  const [demoVideos, setDemoVideos] = useState<DemoVideo[]>([])
+  const [selectedDemoId, setSelectedDemoId] = useState<string | null>(null)
+  const [demoResult, setDemoResult] = useState<PassengerVideoResult | null>(null)
+  const demoRequestRef = useRef(0)
 
-  const videoUrl = useMemo(
+  const fileUrl = useMemo(
     () => (selectedFile ? URL.createObjectURL(selectedFile) : null),
     [selectedFile],
   )
 
   useEffect(() => {
     return () => {
-      if (videoUrl) URL.revokeObjectURL(videoUrl)
+      if (fileUrl) URL.revokeObjectURL(fileUrl)
     }
-  }, [videoUrl])
+  }, [fileUrl])
+
+  const videoUrl = fileUrl ?? (selectedDemoId ? demoVideoUrl(selectedDemoId) : null)
+  const selectedDemo = demoVideos.find((demo) => demo.id === selectedDemoId) ?? null
 
   const checkBackend = useCallback(async () => {
     setBackendStatus('checking')
@@ -148,6 +162,17 @@ function App() {
   useEffect(() => {
     void checkBackend()
   }, [checkBackend])
+
+  useEffect(() => {
+    if (backendStatus !== 'connected') return
+    const controller = new AbortController()
+    listDemoVideos(controller.signal)
+      .then(setDemoVideos)
+      .catch(() => {
+        if (!controller.signal.aborted) setDemoVideos([])
+      })
+    return () => controller.abort()
+  }, [backendStatus])
 
   useEffect(() => {
     if (!analysisJobId) return
@@ -202,7 +227,10 @@ function App() {
     }
 
     setSelectedFile(file)
+    setSelectedDemoId(null)
+    setDemoResult(null)
     setVideoDuration(null)
+    setVideoSize(null)
     setUploadError(null)
     setAnalysisMessage(null)
     setAnalysisJobId(null)
@@ -223,8 +251,40 @@ function App() {
     if (file) acceptFile(file)
   }
 
-  const clearFile = () => {
+  const selectDemo = async (demo: DemoVideo) => {
+    const request = ++demoRequestRef.current
     setSelectedFile(null)
+    setSelectedDemoId(demo.id)
+    setDemoResult(null)
+    setVideoDuration(null)
+    setVideoSize(null)
+    setUploadError(null)
+    setAnalysisJobId(null)
+    setAnalysisJob(null)
+    setVideoTime(0)
+    setDoorEditorPhase(null)
+    setCameraView(demo.cameraView)
+    setAnalysisMessage('Loading pre-analyzed results…')
+    try {
+      const loaded = await getDemoVideoResult(demo.id)
+      if (request !== demoRequestRef.current) return
+      setDemoResult(loaded)
+      setDoorLine([loaded.settings.doorLineStart, loaded.settings.doorLineEnd])
+      setInsidePoint(loaded.settings.insidePoint)
+      setInitialPassengers(loaded.settings.initialPassengers)
+      setAnalysisMessage(`Pre-analyzed: ${loaded.frames.length} frames at ${loaded.processingFps.toFixed(1)} FPS. Press play to watch.`)
+    } catch (error) {
+      if (request !== demoRequestRef.current) return
+      setAnalysisMessage(error instanceof Error ? error.message : 'Could not load the demo results.')
+    }
+  }
+
+  const clearFile = () => {
+    demoRequestRef.current++
+    setSelectedFile(null)
+    setSelectedDemoId(null)
+    setDemoResult(null)
+    setVideoSize(null)
     setVideoDuration(null)
     setUploadError(null)
     setAnalysisMessage(null)
@@ -286,10 +346,19 @@ function App() {
 
   const handleDoorLineClick = (event: MouseEvent<HTMLDivElement>) => {
     if (!doorEditorPhase || cameraView !== 'rear') return
+    // The video is letterboxed (object-fit: contain), so map clicks to the visible frame, not the stage.
     const bounds = event.currentTarget.getBoundingClientRect()
+    let { left, top, width, height } = bounds
+    if (frameSize) {
+      const scale = Math.min(bounds.width / frameSize.width, bounds.height / frameSize.height)
+      width = frameSize.width * scale
+      height = frameSize.height * scale
+      left += (bounds.width - width) / 2
+      top += (bounds.height - height) / 2
+    }
     const point = {
-      x: Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width)),
-      y: Math.min(1, Math.max(0, (event.clientY - bounds.top) / bounds.height)),
+      x: Math.min(1, Math.max(0, (event.clientX - left) / width)),
+      y: Math.min(1, Math.max(0, (event.clientY - top) / height)),
     }
 
     if (doorEditorPhase === 'inside') {
@@ -298,16 +367,16 @@ function App() {
       return
     }
 
-    setDoorLine((current) => {
-      if (current.length === 1) {
-        setDoorEditorPhase('inside')
-        return [current[0], point]
-      }
-      return [point]
-    })
+    if (doorLine.length === 1) {
+      setDoorLine([doorLine[0], point])
+      setDoorEditorPhase('inside')
+    } else {
+      setDoorLine([point])
+    }
   }
 
-  const result = analysisJob?.result ?? null
+  const result = analysisJob?.result ?? demoResult
+  const frameSize = videoSize ?? (result ? { width: result.width, height: result.height } : null)
   const analysisRunning = isUploading || analysisJob?.status === 'Queued' || analysisJob?.status === 'Processing'
   const activeFrame = useMemo<PassengerVideoFrame | null>(() => {
     if (!result?.frames.length) return null
@@ -323,14 +392,31 @@ function App() {
   const visibleDetections = activeFrame?.detections ?? []
   const currentSitting = visibleDetections.filter((item) => item.className === 'sitting').length
   const currentStanding = visibleDetections.filter((item) => item.className === 'standing').length
+  // Replays door events up to the playhead, with the same zero clamp the server applies.
+  const doorTimeline = useMemo(() => {
+    if (!result) return []
+    let occupancy = result.settings?.initialPassengers ?? 0
+    return [...result.doorEvents]
+      .sort((a, b) => a.timestampSeconds - b.timestampSeconds)
+      .map((event) => {
+        occupancy = Math.max(0, occupancy + (event.direction === 'boarded' ? 1 : -1))
+        return { ...event, occupancy }
+      })
+  }, [result])
+  const pastDoorEvents = doorTimeline.filter((event) => event.timestampSeconds <= videoTime)
+  const recentDoorEvents = pastDoorEvents.filter((event) => videoTime - event.timestampSeconds < RECENT_EVENT_SECONDS)
+  const occupancyNow = pastDoorEvents.at(-1)?.occupancy ?? result?.settings?.initialPassengers ?? 0
   const metricValues: Record<string, number | null> = {
     Sitting: result ? currentSitting : null,
     Standing: result ? currentStanding : null,
     'Visible now': result ? currentSitting + currentStanding : null,
-    Boarded: result?.summary.boarded ?? null,
-    Exited: result?.summary.exited ?? null,
-    'Event occupancy': result?.summary.finalEventOccupancy ?? null,
+    Boarded: result ? pastDoorEvents.filter((event) => event.direction === 'boarded').length : null,
+    Exited: result ? pastDoorEvents.filter((event) => event.direction === 'exited').length : null,
+    'Event occupancy': result ? occupancyNow : null,
     'Peak occupancy': result?.summary.peakEventOccupancy ?? null,
+  }
+  const seekTo = (seconds: number) => {
+    if (videoRef.current) videoRef.current.currentTime = seconds
   }
   const timelineFrames = useMemo(() => {
     if (!result?.frames.length) return []
@@ -404,7 +490,30 @@ function App() {
               <div><span className="section-index">01</span><h2>Upload footage</h2></div>
             </div>
 
-            <fieldset className="camera-selector">
+            {demoVideos.length > 0 && (
+              <fieldset className="camera-selector">
+                <legend>Pre-analyzed demo videos</legend>
+                <div className="demo-list">
+                  {demoVideos.map((demo) => (
+                    <button
+                      key={demo.id}
+                      className={selectedDemoId === demo.id ? 'camera-option camera-option--active' : 'camera-option'}
+                      type="button"
+                      onClick={() => void selectDemo(demo)}
+                      aria-pressed={selectedDemoId === demo.id}
+                    >
+                      <Film size={17} />
+                      <span>
+                        <strong title={demo.video}>{demo.video}</strong>
+                        <small>{demo.cameraView === 'front' ? 'Front' : 'Rear'} · {formatDuration(demo.durationSeconds)} · {demo.analyzedFrames} frames</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+
+            <fieldset className="camera-selector" disabled={selectedDemoId !== null}>
               <legend>Camera view</legend>
               <div className="camera-options">
                 <button
@@ -459,6 +568,15 @@ function App() {
                 </span>
                 <button className="icon-button" type="button" onClick={clearFile} aria-label="Remove selected file"><X size={18} /></button>
               </div>
+            ) : selectedDemo ? (
+              <div className="selected-file">
+                <span className="file-icon"><Film size={20} /></span>
+                <span className="file-copy">
+                  <strong title={selectedDemo.video}>{selectedDemo.video}</strong>
+                  <small>Pre-analyzed demo · {formatDuration(selectedDemo.durationSeconds)} · {selectedDemo.cameraView === 'front' ? 'Front camera' : 'Rear camera'}</small>
+                </span>
+                <button className="icon-button" type="button" onClick={clearFile} aria-label="Close demo video"><X size={18} /></button>
+              </div>
             ) : (
               <div className="selected-file selected-file--empty">
                 <span className="file-icon"><Film size={20} /></span>
@@ -494,7 +612,13 @@ function App() {
                   src={videoUrl}
                   controls={!doorEditorPhase}
                   preload="metadata"
-                  onLoadedMetadata={(event) => setVideoDuration(event.currentTarget.duration)}
+                  onLoadedMetadata={(event) => {
+                    const video = event.currentTarget
+                    setVideoDuration(video.duration)
+                    if (video.videoWidth > 0 && video.videoHeight > 0) {
+                      setVideoSize({ width: video.videoWidth, height: video.videoHeight })
+                    }
+                  }}
                   onTimeUpdate={(event) => setVideoTime(event.currentTarget.currentTime)}
                   onSeeked={(event) => setVideoTime(event.currentTarget.currentTime)}
                 >
@@ -548,14 +672,34 @@ function App() {
                 </svg>
               )}
 
-              {cameraView === 'rear' && doorLine.length > 0 && (
-                <svg className="door-line-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Configured door event line">
-                  {doorLine.length === 2 && (
-                    <line x1={doorLine[0].x * 100} y1={doorLine[0].y * 100} x2={doorLine[1].x * 100} y2={doorLine[1].y * 100} />
-                  )}
-                  {doorLine.map((point, index) => <circle key={index} cx={point.x * 100} cy={point.y * 100} r="1.1" />)}
-                  {doorLine.length === 2 && <circle className="inside-point" cx={insidePoint.x * 100} cy={insidePoint.y * 100} r="1.5" />}
-                </svg>
+              {cameraView === 'rear' && doorLine.length > 0 && (() => {
+                const width = frameSize?.width ?? 100
+                const height = frameSize?.height ?? 100
+                const radius = Math.max(width, height) * 0.011
+                return (
+                  <svg
+                    className="door-line-overlay"
+                    viewBox={`0 0 ${width} ${height}`}
+                    preserveAspectRatio={frameSize ? 'xMidYMid meet' : 'none'}
+                    aria-label="Configured door event line"
+                  >
+                    {doorLine.length === 2 && (
+                      <line x1={doorLine[0].x * width} y1={doorLine[0].y * height} x2={doorLine[1].x * width} y2={doorLine[1].y * height} />
+                    )}
+                    {doorLine.map((point, index) => <circle key={index} cx={point.x * width} cy={point.y * height} r={radius} />)}
+                    {doorLine.length === 2 && <circle className="inside-point" cx={insidePoint.x * width} cy={insidePoint.y * height} r={radius * 1.4} />}
+                  </svg>
+                )
+              })()}
+
+              {recentDoorEvents.length > 0 && (
+                <div className="door-event-toast" role="status">
+                  {recentDoorEvents.map((event, index) => (
+                    <span key={`${event.trackId}-${event.timestampSeconds}-${index}`} className={`event-direction event-direction--${event.direction}`}>
+                      ID {event.trackId} {event.direction} · occupancy {event.occupancy}
+                    </span>
+                  ))}
+                </div>
               )}
 
               {doorEditorPhase && (
@@ -585,7 +729,7 @@ function App() {
             </div>
             <div className={`summary-state${analysisRunning ? ' summary-state--running' : result ? ' summary-state--complete' : ''}`}>
               <span className="pulse-dot" />
-              {analysisRunning ? `${analysisJob?.progressPercent ?? 0}% · ${analysisJob?.stage ?? 'Uploading'}` : result ? 'Real analysis complete' : 'Awaiting analysis'}
+              {analysisRunning ? `${analysisJob?.progressPercent ?? 0}% · ${analysisJob?.stage ?? 'Uploading'}` : result ? (demoResult && !analysisJob ? 'Pre-analyzed results loaded' : 'Real analysis complete') : 'Awaiting analysis'}
             </div>
             <ul className="class-list">
               {passengerMetrics.map(({ label, icon: Icon, tone }) => (
@@ -623,7 +767,7 @@ function App() {
           ) : reviewTab === 'timeline' ? (
             <div className="result-timeline" role="tabpanel">
               {timelineFrames.map((frame) => (
-                <button key={frame.frameNumber} type="button" onClick={() => { if (videoRef.current) videoRef.current.currentTime = frame.timestampSeconds }}>
+                <button key={frame.frameNumber} type="button" onClick={() => seekTo(frame.timestampSeconds)}>
                   <strong>{formatDuration(frame.timestampSeconds)}</strong>
                   <span>{frame.detections.length} visible</span>
                   <small>{frame.detections.map((item) => `ID ${item.trackId}`).join(' · ') || 'No detections'}</small>
@@ -644,7 +788,19 @@ function App() {
             </div>
           ) : (
             <div className="door-events" role="tabpanel">
-              {result.doorEvents.length ? result.doorEvents.map((event, index) => <article key={`${event.trackId}-${index}`}><span className={`event-direction event-direction--${event.direction}`}>{event.direction}</span><strong>ID {event.trackId}</strong><time>{formatDuration(event.timestampSeconds)}</time></article>) : <p>No confirmed door-line crossings were detected in this video.</p>}
+              {doorTimeline.length ? doorTimeline.map((event, index) => (
+                <button
+                  key={`${event.trackId}-${index}`}
+                  type="button"
+                  className={event.timestampSeconds <= videoTime ? 'door-event door-event--past' : 'door-event'}
+                  onClick={() => seekTo(Math.max(0, event.timestampSeconds - 1))}
+                >
+                  <span className={`event-direction event-direction--${event.direction}`}>{event.direction}</span>
+                  <strong>ID {event.trackId}</strong>
+                  <small>occupancy {event.occupancy}</small>
+                  <time>{formatDuration(event.timestampSeconds)}</time>
+                </button>
+              )) : <p>No confirmed door-line crossings were detected in this video.</p>}
             </div>
           )}
         </section>

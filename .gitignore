@@ -35,6 +35,8 @@ data/samples/*
 !data/samples/README.md
 data/output/*
 !data/output/README.md
+data/demo/*
+!data/demo/README.md
 
 # Model artifacts are supplied locally and may be large
 *.onnx

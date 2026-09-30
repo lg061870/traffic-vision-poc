@@ -28,6 +28,27 @@ export type PassengerDoorEvent = {
   timestampSeconds: number
 }
 
+export type NormalizedPoint = { x: number; y: number }
+
+export type PassengerVideoSettings = {
+  confidenceThreshold: number
+  initialPassengers: number
+  doorLineStart: NormalizedPoint
+  doorLineEnd: NormalizedPoint
+  insidePoint: NormalizedPoint
+}
+
+export type PassengerVideoSummary = {
+  sittingPeak: number
+  standingPeak: number
+  visiblePeak: number
+  uniquePassengers: number
+  boarded: number
+  exited: number
+  finalEventOccupancy: number
+  peakEventOccupancy: number
+}
+
 export type PassengerVideoResult = {
   video: string
   cameraView: 'front' | 'rear'
@@ -38,18 +59,22 @@ export type PassengerVideoResult = {
   processingFps: number
   elapsedSeconds: number
   model: string
+  analyzedAtUtc: string
+  settings: PassengerVideoSettings
   frames: PassengerVideoFrame[]
   doorEvents: PassengerDoorEvent[]
-  summary: {
-    sittingPeak: number
-    standingPeak: number
-    visiblePeak: number
-    uniquePassengers: number
-    boarded: number
-    exited: number
-    finalEventOccupancy: number
-    peakEventOccupancy: number
-  }
+  summary: PassengerVideoSummary
+}
+
+export type DemoVideo = {
+  id: string
+  video: string
+  cameraView: 'front' | 'rear'
+  durationSeconds: number
+  analyzedFrames: number
+  processingFps: number
+  analyzedAtUtc: string
+  summary: PassengerVideoSummary
 }
 
 export type VideoAnalysisAccepted = {

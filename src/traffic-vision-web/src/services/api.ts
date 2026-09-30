@@ -1,5 +1,7 @@
 import type { HealthResponse } from '../types/health'
 import type {
+  DemoVideo,
+  PassengerVideoResult,
   VideoAnalysisAccepted,
   VideoAnalysisJob,
   VideoAnalysisSettings,
@@ -60,4 +62,24 @@ export async function cancelVideoAnalysis(jobId: string): Promise<void> {
   if (!response.ok && response.status !== 404) {
     throw new Error(`Analysis cancellation failed with status ${response.status}`)
   }
+}
+
+export async function listDemoVideos(signal?: AbortSignal): Promise<DemoVideo[]> {
+  const response = await fetch('/api/demo-videos', { signal })
+  if (!response.ok) {
+    throw new Error(`Demo library request failed with status ${response.status}`)
+  }
+  return response.json() as Promise<DemoVideo[]>
+}
+
+export async function getDemoVideoResult(id: string, signal?: AbortSignal): Promise<PassengerVideoResult> {
+  const response = await fetch(`/api/demo-videos/${encodeURIComponent(id)}/result`, { signal })
+  if (!response.ok) {
+    throw new Error(`Demo result request failed with status ${response.status}`)
+  }
+  return response.json() as Promise<PassengerVideoResult>
+}
+
+export function demoVideoUrl(id: string): string {
+  return `/api/demo-videos/${encodeURIComponent(id)}/video`
 }

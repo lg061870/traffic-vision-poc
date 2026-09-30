@@ -1,13 +1,6 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Threading.Channels;
-using Microsoft.Extensions.Options;
-using OpenCvSharp;
-using SkiaSharp;
-using TrafficVision.Api.Configuration;
-using TrafficVision.Api.DoorEvents;
 using TrafficVision.Api.Models;
-using TrafficVision.Api.Tracking;
 
 namespace TrafficVision.Api.Services;
 
@@ -16,18 +9,15 @@ public sealed class PassengerVideoAnalysisCoordinator : BackgroundService
     private readonly ConcurrentDictionary<Guid, VideoJob> _jobs = new();
     private readonly Channel<VideoJob> _queue = Channel.CreateUnbounded<VideoJob>(
         new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
-    private readonly PassengerImageAnalyzer _analyzer;
-    private readonly PassengerVisionOptions _visionOptions;
+    private readonly PassengerVideoProcessor _processor;
     private readonly ILogger<PassengerVideoAnalysisCoordinator> _logger;
     private readonly string _temporaryDirectory;
 
     public PassengerVideoAnalysisCoordinator(
-        PassengerImageAnalyzer analyzer,
-        IOptions<PassengerVisionOptions> visionOptions,
+        PassengerVideoProcessor processor,
         ILogger<PassengerVideoAnalysisCoordinator> logger)
     {
-        _analyzer = analyzer;
-        _visionOptions = visionOptions.Value;
+        _processor = processor;
         _logger = logger;
         _temporaryDirectory = Path.Combine(Path.GetTempPath(), "traffic-vision-poc", "video-jobs");
         Directory.CreateDirectory(_temporaryDirectory);
@@ -89,7 +79,14 @@ public sealed class PassengerVideoAnalysisCoordinator : BackgroundService
             try
             {
                 job.MarkProcessing();
-                var result = ProcessVideo(job, linkedCancellation.Token);
+                var result = _processor.Process(
+                    job.TemporaryPath,
+                    job.OriginalFileName,
+                    job.Options,
+                    progress => job.UpdateProgress(
+                        progress.Percent,
+                        $"Analyzing frame {progress.SourceFrame:N0}"),
+                    linkedCancellation.Token);
                 job.MarkCompleted(result);
             }
             catch (OperationCanceledException) when (job.Cancellation.IsCancellationRequested)
@@ -112,155 +109,6 @@ public sealed class PassengerVideoAnalysisCoordinator : BackgroundService
             }
         }
     }
-
-    private PassengerVideoResult ProcessVideo(VideoJob job, CancellationToken cancellationToken)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        using var capture = new VideoCapture(job.TemporaryPath);
-        if (!capture.IsOpened())
-        {
-            throw new InvalidDataException("The uploaded video could not be decoded.");
-        }
-
-        var sourceFps = capture.Get(VideoCaptureProperties.Fps);
-        if (!double.IsFinite(sourceFps) || sourceFps <= 0)
-        {
-            sourceFps = 30;
-        }
-
-        var totalSourceFrames = Math.Max(0, (int)Math.Round(capture.Get(VideoCaptureProperties.FrameCount)));
-        var width = Math.Max(1, (int)Math.Round(capture.Get(VideoCaptureProperties.FrameWidth)));
-        var height = Math.Max(1, (int)Math.Round(capture.Get(VideoCaptureProperties.FrameHeight)));
-        var durationSeconds = totalSourceFrames > 0 ? totalSourceFrames / sourceFps : 0;
-        var processingFps = Math.Clamp(job.Options.ProcessingFps, 1, 15);
-        processingFps = Math.Min(processingFps, Math.Max(1, (int)Math.Ceiling(sourceFps)));
-        var sampleIntervalSeconds = 1d / processingFps;
-        var lostTrackFrames = Math.Max(
-            2,
-            (int)Math.Ceiling(
-                _visionOptions.Tracking.LostTrackFrames *
-                (processingFps / 15d)));
-        var tracker = new PassengerTracker(
-            _visionOptions.Tracking.MatchIouThreshold,
-            _visionOptions.Tracking.ConfirmAfterDetections,
-            lostTrackFrames);
-        var doorCounter = string.Equals(job.Options.CameraView, "rear", StringComparison.OrdinalIgnoreCase)
-            ? new DoorCrossingCounter(
-                width,
-                height,
-                job.Options.DoorLineStart,
-                job.Options.DoorLineEnd,
-                job.Options.InsidePoint,
-                _visionOptions.DoorEvents.HysteresisPixels,
-                _visionOptions.DoorEvents.StableFrames,
-                _visionOptions.DoorEvents.CooldownSeconds)
-            : null;
-
-        var frames = new List<PassengerVideoFrame>();
-        var doorEvents = new List<PassengerDoorEvent>();
-        var nextSampleSeconds = 0d;
-        var sourceFrameNumber = 0;
-        var sittingPeak = 0;
-        var standingPeak = 0;
-        var visiblePeak = 0;
-        var eventOccupancy = job.Options.InitialPassengers;
-        var peakEventOccupancy = eventOccupancy;
-
-        using var frame = new Mat();
-        while (capture.Read(frame))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (frame.Empty())
-            {
-                break;
-            }
-
-            var timestampSeconds = sourceFrameNumber / sourceFps;
-            if (timestampSeconds + 0.0001 >= nextSampleSeconds)
-            {
-                job.UpdateProgress(
-                    CalculateProgress(sourceFrameNumber, totalSourceFrames),
-                    $"Analyzing frame {sourceFrameNumber:N0}");
-
-                Cv2.ImEncode(
-                    ".jpg",
-                    frame,
-                    out var encodedFrame,
-                    [(int)ImwriteFlags.JpegQuality, 95]);
-                using var bitmap = SKBitmap.Decode(encodedFrame)
-                    ?? throw new InvalidDataException("A video frame could not be converted for inference.");
-                var detections = _analyzer.AnalyzeBitmap(
-                    bitmap,
-                    job.Options.ConfidenceThreshold,
-                    cancellationToken);
-                var trackedDetections = tracker.Update(detections);
-                var frameEvents = doorCounter?.Update(timestampSeconds, trackedDetections) ?? [];
-                doorEvents.AddRange(frameEvents);
-
-                foreach (var doorEvent in frameEvents)
-                {
-                    eventOccupancy += doorEvent.Direction == "boarded" ? 1 : -1;
-                    eventOccupancy = Math.Max(0, eventOccupancy);
-                    peakEventOccupancy = Math.Max(peakEventOccupancy, eventOccupancy);
-                }
-
-                var sitting = trackedDetections.Count(detection => detection.ClassName == "sitting");
-                var standing = trackedDetections.Count(detection => detection.ClassName == "standing");
-                sittingPeak = Math.Max(sittingPeak, sitting);
-                standingPeak = Math.Max(standingPeak, standing);
-                visiblePeak = Math.Max(visiblePeak, sitting + standing);
-                frames.Add(new PassengerVideoFrame(sourceFrameNumber, timestampSeconds, trackedDetections));
-
-                do
-                {
-                    nextSampleSeconds += sampleIntervalSeconds;
-                }
-                while (nextSampleSeconds <= timestampSeconds);
-            }
-
-            sourceFrameNumber++;
-        }
-
-        if (sourceFrameNumber == 0)
-        {
-            throw new InvalidDataException("The uploaded video contains no readable frames.");
-        }
-
-        if (durationSeconds <= 0)
-        {
-            durationSeconds = sourceFrameNumber / sourceFps;
-        }
-
-        stopwatch.Stop();
-        var boarded = doorEvents.Count(item => item.Direction == "boarded");
-        var exited = doorEvents.Count(item => item.Direction == "exited");
-        var actualProcessingFps = durationSeconds > 0 ? frames.Count / durationSeconds : processingFps;
-
-        return new PassengerVideoResult(
-            job.OriginalFileName,
-            job.Options.CameraView,
-            width,
-            height,
-            durationSeconds,
-            sourceFps,
-            actualProcessingFps,
-            stopwatch.Elapsed.TotalSeconds,
-            "bus-passengers-rfdetr-s-v1",
-            frames,
-            doorEvents,
-            new PassengerVideoSummary(
-                sittingPeak,
-                standingPeak,
-                visiblePeak,
-                tracker.ConfirmedTrackCount,
-                boarded,
-                exited,
-                eventOccupancy,
-                peakEventOccupancy));
-    }
-
-    private static int CalculateProgress(int frameNumber, int totalFrames) =>
-        totalFrames <= 0 ? 0 : Math.Clamp((int)Math.Round(frameNumber * 100d / totalFrames), 0, 99);
 
     private void TryDelete(string path)
     {

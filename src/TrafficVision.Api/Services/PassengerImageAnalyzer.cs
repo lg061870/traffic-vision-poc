@@ -95,20 +95,27 @@ public sealed class PassengerImageAnalyzer : IDisposable
 
     private static DenseTensor<float> CreateInputTensor(SKBitmap image)
     {
-        var tensor = new DenseTensor<float>([1, 3, ModelSize, ModelSize]);
+        const int planeSize = ModelSize * ModelSize;
+        var buffer = new float[3 * planeSize];
+        var pixels = image.GetPixelSpan();
+        var rowBytes = image.RowBytes;
 
+        // Rgb888x stores each pixel as R, G, B, unused.
         for (var y = 0; y < ModelSize; y++)
         {
+            var row = pixels.Slice(y * rowBytes, ModelSize * 4);
+            var rowOffset = y * ModelSize;
             for (var x = 0; x < ModelSize; x++)
             {
-                var pixel = image.GetPixel(x, y);
-                tensor[0, 0, y, x] = ((pixel.Red / 255f) - Means[0]) / StandardDeviations[0];
-                tensor[0, 1, y, x] = ((pixel.Green / 255f) - Means[1]) / StandardDeviations[1];
-                tensor[0, 2, y, x] = ((pixel.Blue / 255f) - Means[2]) / StandardDeviations[2];
+                var index = rowOffset + x;
+                var pixel = x * 4;
+                buffer[index] = ((row[pixel] / 255f) - Means[0]) / StandardDeviations[0];
+                buffer[planeSize + index] = ((row[pixel + 1] / 255f) - Means[1]) / StandardDeviations[1];
+                buffer[(2 * planeSize) + index] = ((row[pixel + 2] / 255f) - Means[2]) / StandardDeviations[2];
             }
         }
 
-        return tensor;
+        return new DenseTensor<float>(buffer, [1, 3, ModelSize, ModelSize]);
     }
 
     private IReadOnlyList<PassengerImageDetection> Decode(
