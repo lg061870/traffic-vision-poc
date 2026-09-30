@@ -53,8 +53,25 @@ public sealed class PassengerImageAnalyzer : IDisposable
         cancellationToken.ThrowIfCancellationRequested();
         using var source = SKBitmap.Decode(imageStream)
             ?? throw new InvalidDataException("The uploaded file is not a supported image.");
-        var originalWidth = source.Width;
-        var originalHeight = source.Height;
+        var detections = AnalyzeBitmap(source, _options.ConfidenceThreshold, cancellationToken);
+        var annotatedBytes = Annotate(source, detections);
+
+        return Task.FromResult(new PassengerImageResult(
+            Path.GetFileName(imageName),
+            source.Width,
+            source.Height,
+            "bus-passengers-rfdetr-s-v1",
+            detections,
+            "image/jpeg",
+            Convert.ToBase64String(annotatedBytes)));
+    }
+
+    public IReadOnlyList<PassengerImageDetection> AnalyzeBitmap(
+        SKBitmap source,
+        float confidenceThreshold,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         using var resized = source.Resize(
             new SKImageInfo(ModelSize, ModelSize, SKColorType.Rgb888x, SKAlphaType.Opaque),
             new SKSamplingOptions(SKCubicResampler.Mitchell));
@@ -65,19 +82,15 @@ public sealed class PassengerImageAnalyzer : IDisposable
             NamedOnnxValue.CreateFromTensor(InputName, input)
         ]);
 
+        cancellationToken.ThrowIfCancellationRequested();
         var boxes = results.Single(result => result.Name == BoxesOutputName).AsTensor<float>();
         var labels = results.Single(result => result.Name == LabelsOutputName).AsTensor<float>();
-        var detections = Decode(boxes, labels, originalWidth, originalHeight);
-        var annotatedBytes = Annotate(source, detections);
-
-        return Task.FromResult(new PassengerImageResult(
-            Path.GetFileName(imageName),
-            originalWidth,
-            originalHeight,
-            "bus-passengers-rfdetr-s-v1",
-            detections,
-            "image/jpeg",
-            Convert.ToBase64String(annotatedBytes)));
+        return Decode(
+            boxes,
+            labels,
+            source.Width,
+            source.Height,
+            Math.Clamp(confidenceThreshold, 0.05f, 0.95f));
     }
 
     private static DenseTensor<float> CreateInputTensor(SKBitmap image)
@@ -102,7 +115,8 @@ public sealed class PassengerImageAnalyzer : IDisposable
         Tensor<float> boxes,
         Tensor<float> labels,
         int imageWidth,
-        int imageHeight)
+        int imageHeight,
+        float confidenceThreshold)
     {
         var detections = new List<PassengerImageDetection>();
         var queryCount = boxes.Dimensions[1];
@@ -122,7 +136,7 @@ public sealed class PassengerImageAnalyzer : IDisposable
                 }
             }
 
-            if (selectedClass is null || selectedScore < _options.ConfidenceThreshold)
+            if (selectedClass is null || selectedScore < confidenceThreshold)
             {
                 continue;
             }

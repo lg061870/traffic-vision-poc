@@ -1,7 +1,12 @@
 using TrafficVision.Api.Configuration;
 using TrafficVision.Api.Services;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
 
 const string frontendCorsPolicy = "FrontendDevelopment";
 
@@ -9,11 +14,15 @@ var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
     .Get<string[]>() ?? ["http://localhost:5173", "http://127.0.0.1:5173"];
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 builder.Services.Configure<PassengerVisionOptions>(
     builder.Configuration.GetSection(PassengerVisionOptions.SectionName));
 builder.Services.AddSingleton<PassengerImageAnalyzer>();
+builder.Services.AddSingleton<PassengerVideoAnalysisCoordinator>();
+builder.Services.AddHostedService(provider =>
+    provider.GetRequiredService<PassengerVideoAnalysisCoordinator>());
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(frontendCorsPolicy, policy =>

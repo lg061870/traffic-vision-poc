@@ -39,15 +39,25 @@ import {
   X,
 } from 'lucide-react'
 import { BackendStatusPill } from './components/BackendStatusPill'
-import { getHealth } from './services/api'
+import {
+  cancelVideoAnalysis,
+  getHealth,
+  getVideoAnalysis,
+  startVideoAnalysis,
+} from './services/api'
 import type { BackendStatus } from './types/health'
+import type {
+  PassengerVideoFrame,
+  VideoAnalysisJob,
+} from './types/videoAnalysis'
 
-const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024
+const MAX_FILE_SIZE = 500 * 1024 * 1024
 const ALLOWED_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv']
 
 type CameraView = 'front' | 'rear'
 type DoorPoint = { x: number; y: number }
 type DoorEditorPhase = 'line' | 'inside' | null
+type ReviewTab = 'timeline' | 'detections' | 'tracking' | 'door'
 
 const passengerMetrics = [
   { label: 'Sitting', icon: Armchair, tone: 'magenta' },
@@ -85,16 +95,22 @@ function formatPoint(point: DoorPoint) {
 
 function App() {
   const inputRef = useRef<HTMLInputElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const [backendStatus, setBackendStatus] = useState<BackendStatus>('checking')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [videoDuration, setVideoDuration] = useState<number | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [analysisMessage, setAnalysisMessage] = useState<string | null>(null)
+  const [analysisJobId, setAnalysisJobId] = useState<string | null>(null)
+  const [analysisJob, setAnalysisJob] = useState<VideoAnalysisJob | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [videoTime, setVideoTime] = useState(0)
+  const [reviewTab, setReviewTab] = useState<ReviewTab>('timeline')
   const [cameraView, setCameraView] = useState<CameraView>('front')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.4)
-  const [processingFps, setProcessingFps] = useState(15)
+  const [processingFps, setProcessingFps] = useState(1)
   const [initialPassengers, setInitialPassengers] = useState(0)
   const [doorLine, setDoorLine] = useState<DoorPoint[]>([
     { x: 0.1, y: 0.7 },
@@ -133,6 +149,47 @@ function App() {
     void checkBackend()
   }, [checkBackend])
 
+  useEffect(() => {
+    if (!analysisJobId) return
+
+    let disposed = false
+    let timer = 0
+    const controller = new AbortController()
+    const poll = async () => {
+      try {
+        const job = await getVideoAnalysis(analysisJobId, controller.signal)
+        if (disposed) return
+        setAnalysisJob(job)
+        if (job.status === 'Completed') {
+          setAnalysisMessage(`Analysis complete: ${job.result?.frames.length ?? 0} sampled frames with real RF-DETR results.`)
+          setVideoTime(0)
+          if (videoRef.current) videoRef.current.currentTime = 0
+          return
+        }
+        if (job.status === 'Failed') {
+          setAnalysisMessage(job.error ?? 'Video analysis failed.')
+          return
+        }
+        if (job.status === 'Cancelled') {
+          setAnalysisMessage('Video analysis was cancelled.')
+          return
+        }
+        timer = window.setTimeout(() => void poll(), 1000)
+      } catch (error) {
+        if (disposed || controller.signal.aborted) return
+        setAnalysisMessage(error instanceof Error ? error.message : 'Could not read analysis progress.')
+        timer = window.setTimeout(() => void poll(), 2500)
+      }
+    }
+
+    void poll()
+    return () => {
+      disposed = true
+      controller.abort()
+      window.clearTimeout(timer)
+    }
+  }, [analysisJobId])
+
   const acceptFile = (file: File) => {
     const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
     if (!ALLOWED_EXTENSIONS.includes(extension)) {
@@ -140,7 +197,7 @@ function App() {
       return
     }
     if (file.size > MAX_FILE_SIZE) {
-      setUploadError('The selected file is larger than the 2 GB POC limit.')
+      setUploadError('The selected file is larger than the 500 MB POC limit.')
       return
     }
 
@@ -148,6 +205,9 @@ function App() {
     setVideoDuration(null)
     setUploadError(null)
     setAnalysisMessage(null)
+    setAnalysisJobId(null)
+    setAnalysisJob(null)
+    setVideoTime(0)
   }
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -168,21 +228,53 @@ function App() {
     setVideoDuration(null)
     setUploadError(null)
     setAnalysisMessage(null)
+    setAnalysisJobId(null)
+    setAnalysisJob(null)
+    setVideoTime(0)
   }
 
   const selectCamera = (view: CameraView) => {
     setCameraView(view)
     setDoorEditorPhase(null)
     setAnalysisMessage(null)
+    setAnalysisJobId(null)
+    setAnalysisJob(null)
   }
 
-  const requestAnalysis = () => {
+  const requestAnalysis = async () => {
     if (!selectedFile) return
-    setAnalysisMessage(
-      backendStatus === 'connected'
-        ? 'Still-image inference is verified. Video analysis is the next implementation milestone; no video analysis has been run.'
-        : 'Start the backend before passenger analysis can be connected. No analysis has been run.',
-    )
+    if (backendStatus !== 'connected') {
+      setAnalysisMessage('Start the backend before running passenger analysis.')
+      return
+    }
+
+    setIsUploading(true)
+    setAnalysisMessage('Uploading the video to the local analysis worker…')
+    setAnalysisJobId(null)
+    setAnalysisJob(null)
+    setVideoTime(0)
+    try {
+      const accepted = await startVideoAnalysis(selectedFile, {
+        cameraView,
+        confidenceThreshold,
+        processingFps,
+        initialPassengers,
+        doorLine,
+        insidePoint,
+      })
+      setAnalysisJobId(accepted.jobId)
+      setAnalysisMessage('Video queued. RF-DETR inference and passenger tracking will run in the background.')
+    } catch (error) {
+      setAnalysisMessage(error instanceof Error ? error.message : 'Could not start video analysis.')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const stopAnalysis = async () => {
+    if (!analysisJobId) return
+    await cancelVideoAnalysis(analysisJobId).catch(() => undefined)
+    setAnalysisMessage('Cancelling video analysis…')
   }
 
   const startDoorLineEdit = () => {
@@ -214,6 +306,60 @@ function App() {
       return [point]
     })
   }
+
+  const result = analysisJob?.result ?? null
+  const analysisRunning = isUploading || analysisJob?.status === 'Queued' || analysisJob?.status === 'Processing'
+  const activeFrame = useMemo<PassengerVideoFrame | null>(() => {
+    if (!result?.frames.length) return null
+    let nearest = result.frames[0]
+    for (const frame of result.frames) {
+      if (Math.abs(frame.timestampSeconds - videoTime) < Math.abs(nearest.timestampSeconds - videoTime)) {
+        nearest = frame
+      }
+      if (frame.timestampSeconds > videoTime) break
+    }
+    return nearest
+  }, [result, videoTime])
+  const visibleDetections = activeFrame?.detections ?? []
+  const currentSitting = visibleDetections.filter((item) => item.className === 'sitting').length
+  const currentStanding = visibleDetections.filter((item) => item.className === 'standing').length
+  const metricValues: Record<string, number | null> = {
+    Sitting: result ? currentSitting : null,
+    Standing: result ? currentStanding : null,
+    'Visible now': result ? currentSitting + currentStanding : null,
+    Boarded: result?.summary.boarded ?? null,
+    Exited: result?.summary.exited ?? null,
+    'Event occupancy': result?.summary.finalEventOccupancy ?? null,
+    'Peak occupancy': result?.summary.peakEventOccupancy ?? null,
+  }
+  const timelineFrames = useMemo(() => {
+    if (!result?.frames.length) return []
+    const step = Math.max(1, Math.floor(result.frames.length / 10))
+    return result.frames.filter((_, index) => index % step === 0).slice(0, 10)
+  }, [result])
+  const trackSummaries = useMemo(() => {
+    if (!result) return []
+    const tracks = new Map<number, { id: number; first: number; last: number; observations: number; className: string }>()
+    for (const frame of result.frames) {
+      for (const detection of frame.detections) {
+        const existing = tracks.get(detection.trackId)
+        if (existing) {
+          existing.last = frame.timestampSeconds
+          existing.observations++
+          existing.className = detection.className
+        } else {
+          tracks.set(detection.trackId, {
+            id: detection.trackId,
+            first: frame.timestampSeconds,
+            last: frame.timestampSeconds,
+            observations: 1,
+            className: detection.className,
+          })
+        }
+      }
+    }
+    return [...tracks.values()].sort((a, b) => a.id - b.id)
+  }, [result])
 
   return (
     <div className="app-shell">
@@ -301,7 +447,7 @@ function App() {
                 onChange={handleFileChange}
               />
             </div>
-            <p className="file-hint">MP4, MOV, AVI or MKV · up to 2 GB</p>
+            <p className="file-hint">MP4, MOV, AVI or MKV · up to 500 MB</p>
             {uploadError && <p className="inline-alert inline-alert--error" role="alert">{uploadError}</p>}
 
             {selectedFile ? (
@@ -316,13 +462,20 @@ function App() {
             ) : (
               <div className="selected-file selected-file--empty">
                 <span className="file-icon"><Film size={20} /></span>
-                <span className="file-copy"><strong>No video selected</strong><small>Your file stays in this browser for this scaffold.</small></span>
+                <span className="file-copy"><strong>No video selected</strong><small>Select footage to send it to the real RF-DETR analysis API.</small></span>
               </div>
             )}
 
-            <button className="button button--run" type="button" disabled={!selectedFile} onClick={requestAnalysis}>
-              <Play size={17} fill="currentColor" />Run passenger analysis
+            <button className="button button--run" type="button" disabled={!selectedFile || analysisRunning} onClick={() => void requestAnalysis()}>
+              <Play size={17} fill="currentColor" />{isUploading ? 'Uploading…' : analysisRunning ? 'Analysis running…' : 'Run passenger analysis'}
             </button>
+            {analysisRunning && (
+              <div className="analysis-progress" aria-label="Video analysis progress">
+                <span><i style={{ width: `${analysisJob?.progressPercent ?? 0}%` }} /></span>
+                <div><strong>{analysisJob?.progressPercent ?? 0}%</strong><small>{analysisJob?.stage ?? 'Uploading video'}</small></div>
+                {analysisJobId && <button type="button" onClick={() => void stopAnalysis()}>Cancel</button>}
+              </div>
+            )}
             {analysisMessage && <p className="inline-alert" role="status">{analysisMessage}</p>}
           </aside>
 
@@ -337,10 +490,13 @@ function App() {
             <div className={`video-stage${doorEditorPhase ? ' video-stage--editing' : ''}`}>
               {videoUrl ? (
                 <video
+                  ref={videoRef}
                   src={videoUrl}
                   controls={!doorEditorPhase}
                   preload="metadata"
                   onLoadedMetadata={(event) => setVideoDuration(event.currentTarget.duration)}
+                  onTimeUpdate={(event) => setVideoTime(event.currentTarget.currentTime)}
+                  onSeeked={(event) => setVideoTime(event.currentTarget.currentTime)}
                 >
                   Your browser does not support video playback.
                 </video>
@@ -353,6 +509,43 @@ function App() {
                   <p>Select bus footage to review it before passenger analysis.</p>
                   <button className="text-action" type="button" onClick={() => inputRef.current?.click()}>Choose a video</button>
                 </div>
+              )}
+
+              {result && activeFrame && (
+                <svg
+                  className="analysis-overlay"
+                  viewBox={`0 0 ${result.width} ${result.height}`}
+                  preserveAspectRatio="xMidYMid meet"
+                  aria-label={`Passenger detections at ${activeFrame.timestampSeconds.toFixed(1)} seconds`}
+                >
+                  {activeFrame.detections.map((detection) => {
+                    const color = detection.className === 'sitting' ? '#ec3fc8' : '#843fe5'
+                    const labelY = Math.max(18, detection.box.y1)
+                    return (
+                      <g key={`${activeFrame.frameNumber}-${detection.trackId}`}>
+                        <rect
+                          className="detection-box"
+                          x={detection.box.x1}
+                          y={detection.box.y1}
+                          width={Math.max(1, detection.box.x2 - detection.box.x1)}
+                          height={Math.max(1, detection.box.y2 - detection.box.y1)}
+                          style={{ stroke: color }}
+                        />
+                        <rect
+                          className="detection-label-bg"
+                          x={detection.box.x1}
+                          y={labelY - 18}
+                          width={Math.min(150, Math.max(102, detection.box.x2 - detection.box.x1))}
+                          height={18}
+                          style={{ fill: color }}
+                        />
+                        <text x={detection.box.x1 + 4} y={labelY - 5}>
+                          ID {detection.trackId} · {detection.className} {(detection.score * 100).toFixed(0)}%
+                        </text>
+                      </g>
+                    )
+                  })}
+                </svg>
               )}
 
               {cameraView === 'rear' && doorLine.length > 0 && (
@@ -390,43 +583,70 @@ function App() {
               <span className="heading-icon"><BarChart3 size={20} /></span>
               <div><span className="section-index">03</span><h2>Passenger summary</h2></div>
             </div>
-            <div className="summary-state"><span className="pulse-dot" />Awaiting analysis</div>
+            <div className={`summary-state${analysisRunning ? ' summary-state--running' : result ? ' summary-state--complete' : ''}`}>
+              <span className="pulse-dot" />
+              {analysisRunning ? `${analysisJob?.progressPercent ?? 0}% · ${analysisJob?.stage ?? 'Uploading'}` : result ? 'Real analysis complete' : 'Awaiting analysis'}
+            </div>
             <ul className="class-list">
               {passengerMetrics.map(({ label, icon: Icon, tone }) => (
                 <li key={label}>
                   <span className={`class-icon class-icon--${tone}`}><Icon size={20} /></span>
-                  <span className="class-copy"><strong>{label}</strong><span className="metric-track"><span /></span></span>
-                  <span className="class-value">—</span>
+                  <span className="class-copy"><strong>{label}</strong><span className="metric-track"><span style={{ width: metricValues[label] === null ? '0%' : `${Math.min(100, (metricValues[label] ?? 0) * 12)}%` }} /></span></span>
+                  <span className="class-value">{metricValues[label] ?? '—'}</span>
                 </li>
               ))}
             </ul>
             <div className="summary-totals">
-              <div><span><Database size={17} />Unique passengers (tracked)</span><strong>—</strong></div>
-              <div><span><Clock size={17} />Video duration</span><strong>{formatDuration(videoDuration)}</strong></div>
-              <div><span><Gauge size={17} />Processed FPS</span><strong>—</strong></div>
+              <div><span><Database size={17} />Unique passengers (tracked)</span><strong>{result?.summary.uniquePassengers ?? '—'}</strong></div>
+              <div><span><Clock size={17} />Video duration</span><strong>{formatDuration(result?.durationSeconds ?? videoDuration)}</strong></div>
+              <div><span><Gauge size={17} />Processed FPS</span><strong>{result ? result.processingFps.toFixed(1) : '—'}</strong></div>
+              {result && <div><span><Clock size={17} />Analysis time</span><strong>{formatDuration(result.elapsedSeconds)}</strong></div>}
             </div>
           </aside>
         </section>
 
         <section className="card review-panel" aria-labelledby="review-title">
           <div className="review-tabs" role="tablist" aria-label="Passenger analysis views">
-            <button className="review-tab review-tab--active" type="button" role="tab" aria-selected="true"><Film size={18} />Timeline</button>
-            <button className="review-tab" type="button" role="tab" aria-selected="false" disabled><List size={18} />Detections</button>
-            <button className="review-tab" type="button" role="tab" aria-selected="false" disabled><Waypoints size={18} />Tracking</button>
-            <button className="review-tab" type="button" role="tab" aria-selected="false" disabled><LogIn size={18} />Door events</button>
+            <button className={`review-tab${reviewTab === 'timeline' ? ' review-tab--active' : ''}`} type="button" role="tab" aria-selected={reviewTab === 'timeline'} onClick={() => setReviewTab('timeline')}><Film size={18} />Timeline</button>
+            <button className={`review-tab${reviewTab === 'detections' ? ' review-tab--active' : ''}`} type="button" role="tab" aria-selected={reviewTab === 'detections'} disabled={!result} onClick={() => setReviewTab('detections')}><List size={18} />Detections</button>
+            <button className={`review-tab${reviewTab === 'tracking' ? ' review-tab--active' : ''}`} type="button" role="tab" aria-selected={reviewTab === 'tracking'} disabled={!result} onClick={() => setReviewTab('tracking')}><Waypoints size={18} />Tracking</button>
+            <button className={`review-tab${reviewTab === 'door' ? ' review-tab--active' : ''}`} type="button" role="tab" aria-selected={reviewTab === 'door'} disabled={!result} onClick={() => setReviewTab('door')}><LogIn size={18} />Door events</button>
           </div>
-          <div className="timeline-empty" role="tabpanel">
-            <div className="timeline-rail" aria-hidden="true">
-              {Array.from({ length: 8 }, (_, index) => <span key={index} />)}
-            </div>
-            <div className="timeline-copy">
-              <span className="timeline-icon"><CircleGauge size={22} /></span>
-              <div>
-                <h2 id="review-title">Timeline ready for passenger metadata</h2>
-                <p>{cameraView === 'rear' ? 'Boarding and exit events will appear here with timestamps and thumbnails.' : 'Frame-level sitting, standing, and tracking results will appear here.'}</p>
+          {!result ? (
+            <div className="timeline-empty" role="tabpanel">
+              <div className="timeline-rail" aria-hidden="true">{Array.from({ length: 8 }, (_, index) => <span key={index} />)}</div>
+              <div className="timeline-copy">
+                <span className="timeline-icon"><CircleGauge size={22} /></span>
+                <div><h2 id="review-title">Timeline ready for real passenger metadata</h2><p>Run analysis to populate detections, stable track IDs, and door events.</p></div>
               </div>
             </div>
-          </div>
+          ) : reviewTab === 'timeline' ? (
+            <div className="result-timeline" role="tabpanel">
+              {timelineFrames.map((frame) => (
+                <button key={frame.frameNumber} type="button" onClick={() => { if (videoRef.current) videoRef.current.currentTime = frame.timestampSeconds }}>
+                  <strong>{formatDuration(frame.timestampSeconds)}</strong>
+                  <span>{frame.detections.length} visible</span>
+                  <small>{frame.detections.map((item) => `ID ${item.trackId}`).join(' · ') || 'No detections'}</small>
+                </button>
+              ))}
+            </div>
+          ) : reviewTab === 'detections' ? (
+            <div className="result-table-wrap" role="tabpanel">
+              <table className="result-table"><thead><tr><th>Time</th><th>Track</th><th>Class</th><th>Confidence</th></tr></thead><tbody>
+                {result.frames.flatMap((frame) => frame.detections.map((detection) => (
+                  <tr key={`${frame.frameNumber}-${detection.trackId}`}><td>{formatDuration(frame.timestampSeconds)}</td><td>ID {detection.trackId}</td><td>{detection.className}</td><td>{(detection.score * 100).toFixed(1)}%</td></tr>
+                ))).slice(0, 250)}
+              </tbody></table>
+            </div>
+          ) : reviewTab === 'tracking' ? (
+            <div className="track-grid" role="tabpanel">
+              {trackSummaries.map((track) => <article key={track.id}><strong>ID {track.id}</strong><span>{track.className}</span><small>{formatDuration(track.first)} → {formatDuration(track.last)} · {track.observations} observations</small></article>)}
+            </div>
+          ) : (
+            <div className="door-events" role="tabpanel">
+              {result.doorEvents.length ? result.doorEvents.map((event, index) => <article key={`${event.trackId}-${index}`}><span className={`event-direction event-direction--${event.direction}`}>{event.direction}</span><strong>ID {event.trackId}</strong><time>{formatDuration(event.timestampSeconds)}</time></article>) : <p>No confirmed door-line crossings were detected in this video.</p>}
+            </div>
+          )}
         </section>
 
         <section id="about" className="about-strip" aria-labelledby="about-title">
@@ -450,7 +670,7 @@ function App() {
 
       <footer className="footer">
         <span>Bus Passenger Vision POC</span>
-        <span>Still-image inference verified · video pipeline pending</span>
+        <span>Real ONNX inference · asynchronous video analysis · passenger tracking</span>
       </footer>
 
       {settingsOpen && (
@@ -470,11 +690,13 @@ function App() {
             <label className="setting-field">
               <span><strong>Processing rate</strong></span>
               <select value={processingFps} onChange={(event) => setProcessingFps(Number(event.target.value))}>
+                <option value={1}>1 FPS · recommended CPU demo</option>
+                <option value={2}>2 FPS · smoother tracking</option>
                 <option value={5}>5 FPS</option>
                 <option value={10}>10 FPS</option>
                 <option value={15}>15 FPS</option>
               </select>
-              <small>15 FPS is the default upper limit for the POC.</small>
+              <small>1 FPS completes this 45-second sample in about 3–4 minutes on the development PC. Higher rates take proportionally longer.</small>
             </label>
 
             <label className="setting-field">
@@ -495,7 +717,7 @@ function App() {
             </div>
 
             <div className="settings-note">
-              <Info size={17} /><p>Settings are local UI controls until the upload and analysis endpoints are implemented.</p>
+              <Info size={17} /><p>These settings are sent with each video job and control real server-side inference, tracking, and door-event analysis.</p>
             </div>
           </section>
         </div>

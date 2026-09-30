@@ -8,7 +8,7 @@ public sealed class PassengerVisionOptions
 
     public float ConfidenceThreshold { get; set; } = 0.40f;
 
-    public int ProcessingFps { get; set; } = 15;
+    public int ProcessingFps { get; set; } = 1;
 
     public int InitialPassengers { get; set; }
 

@@ -42,27 +42,27 @@ Door events apply only to the rear camera. The user selects two line points and 
 
 Passenger analytics keeps two concepts separate: `visible now` is the front-camera sitting-plus-standing count, while event occupancy is initial passengers plus boarded minus exited, clamped at zero. The POC does not reconcile them. It also aggregates peak occupancy and unique tracked passengers from validated detector, tracker, and door-event output.
 
-## Planned request flow
+## Implemented request flow
 
 ```text
-POST /api/videos
-    -> video identifier + camera view
+POST /api/passenger-analysis/video
+    -> job identifier + queued state
 
-POST /api/videos/{id}/analyze
-    -> analysis state
+GET /api/passenger-analysis/video/{jobId}
+    -> progress or timestamped detections, tracks, door events, and summary
 
-GET /api/videos/{id}/results
-    -> timestamped detections, tracks, door events, and summary
+DELETE /api/passenger-analysis/video/{jobId}
+    -> cancel a queued or running job
 ```
 
-SignalR progress is optional. Database, authentication, cloud infrastructure, and generated annotated videos are outside the current POC scope.
+The current coordinator keeps jobs in memory, processes one job at a time, stores uploads in a temporary directory, and deletes each upload after completion. React polls progress and renders timestamped SVG overlays over the original local video. Database persistence, authentication, cloud infrastructure, and generated annotated-video files are outside the current POC scope.
 
 ## Milestones
 
-1. **Still image:** inspect the model contract, run one bus frame in C#, and emit aligned annotated JPG and JSON.
-2. **Video frames:** decode at 15 FPS or fewer and emit timestamped detections.
-3. **Tracking:** assign stable IDs with a short lost-track tolerance.
-4. **Door events:** count rear-camera line crossings once per track.
-5. **React overlay:** render magenta sitting boxes, purple standing boxes, IDs, confidence, door line, events, and passenger summaries.
+1. ✅ **Still image:** inspect the model contract, run one bus frame in C#, and emit aligned annotated JPG and JSON.
+2. ✅ **Video frames:** decode at 15 FPS or fewer and emit timestamped detections.
+3. ✅ **Tracking:** assign stable IDs with a short lost-track tolerance.
+4. 🟡 **Door events:** crossing logic is implemented; real rear-door footage is still required for validation.
+5. ✅ **React overlay:** render magenta sitting boxes, purple standing boxes, IDs, confidence, door line, events, and passenger summaries.
 
-Do not begin M2 until M1 boxes align with passengers. Do not fabricate analysis results in the UI.
+The end-to-end front-camera test processed 46 sampled frames from the 45.53-second sample at approximately 1 FPS in 201.5 seconds on the development PC. The two primary seated passengers retained IDs 1 and 2 through the clip. Unique-passenger totals remain experimental because detector false positives and simple IoU track fragmentation can inflate them.

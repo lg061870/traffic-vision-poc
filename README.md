@@ -9,15 +9,18 @@ Bus Passenger Vision es una **prueba de concepto (POC)** para analizar video de 
 - Interfaz React + TypeScript adaptada a cámaras internas de autobús.
 - Selector de cámara: frontal para el área de asientos y trasera para la puerta delantera.
 - Selección local, arrastrar y soltar, metadatos y vista previa del video.
-- Configuración local de umbral de confianza (0.40) y velocidad de procesamiento (15 FPS).
+- Configuración enviada al backend de umbral de confianza y velocidad de muestreo (1–15 FPS; 1 FPS recomendado en CPU para la demostración).
 - Editor visual de dos puntos para la línea de eventos de puerta en la cámara trasera.
 - Estados explícitos para detecciones, seguimiento, eventos de puerta y analítica de pasajeros.
 - Endpoint `GET /api/health` con indicador visible de conexión entre frontend y backend.
 - Inferencia real de imágenes en C# con ONNX Runtime para CPU.
 - Endpoint `POST /api/passenger-analysis/image` que devuelve detecciones y un JPG anotado en Base64.
+- Endpoint asíncrono `POST /api/passenger-analysis/video`, consulta de progreso y cancelación.
+- Decodificación real con OpenCV, inferencia RF-DETR por fotograma y seguimiento IoU con IDs persistentes.
+- Overlay SVG sincronizado durante la reproducción, tablas de detecciones, historial de tracks y eventos de puerta.
 - Modelo verificado en `models/bus-passengers-rfdetr-s-v1.onnx` y dos fotogramas dorados.
 
-La interfaz no genera resultados de IA simulados. El hito M1 de imagen fija está validado; el procesamiento de video, seguimiento y eventos de puerta siguen pendientes.
+La interfaz no genera resultados de IA simulados. El video `bus_interior_cctv.mp4` fue procesado de extremo a extremo a 1 FPS: 46 muestras en 201.5 segundos en la computadora de desarrollo. Los dos pasajeros primarios conservaron los IDs 1 y 2 durante el clip. Los eventos de puerta están implementados, pero siguen pendientes de validación con un video real orientado hacia la puerta.
 
 ## Modelo previsto
 
@@ -58,11 +61,12 @@ Consulte [docs/architecture.md](docs/architecture.md) para ver los límites de c
 - .NET 10 / ASP.NET Core Web API
 - C#
 - Microsoft.ML.OnnxRuntime para CPU
+- OpenCvSharp para decodificación de video
 - React
 - TypeScript
 - Vite
 
-La aplicación no utiliza Python en tiempo de ejecución. La conversión offline autorizada se realizó con RF-DETR 1.11.0; la API usa únicamente C#, ONNX Runtime y SkiaSharp.
+La aplicación no utiliza Python en tiempo de ejecución. La conversión offline autorizada se realizó con RF-DETR 1.11.0; la API usa C#, ONNX Runtime, OpenCvSharp y SkiaSharp.
 
 ## Probar una imagen
 
@@ -72,6 +76,18 @@ curl.exe -F "image=@C:\ruta\bus_0010.jpg" `
 ```
 
 La respuesta incluye las cajas `x1/y1/x2/y2`, clase, confianza y `annotatedImageBase64` con el JPG anotado.
+
+## Probar un video
+
+```powershell
+curl.exe -F "video=@C:\ruta\bus_interior_cctv.mp4" `
+  -F "cameraView=front" `
+  -F "confidenceThreshold=0.40" `
+  -F "processingFps=1" `
+  http://localhost:5169/api/passenger-analysis/video
+```
+
+La respuesta `202 Accepted` contiene un `jobId`. Consulte `GET /api/passenger-analysis/video/{jobId}` para leer progreso y resultados, o use `DELETE` sobre la misma ruta para cancelar. El trabajador procesa un video a la vez y elimina el archivo temporal al terminar.
 
 ## Ejecutar el backend
 
@@ -102,12 +118,12 @@ npm run build
 ## Hitos de visión
 
 1. ✅ Inspeccionar el ONNX y ejecutar una imagen fija en C#, produciendo JPG anotado y JSON.
-2. Decodificar y procesar video a un máximo inicial de 15 FPS.
-3. Mantener identificadores de pasajeros mediante seguimiento con tolerancia a oclusiones.
-4. Contar `boarded` y `exited` al cruzar la línea de puerta en la cámara trasera.
-5. Sincronizar los resultados con el video y dibujarlos en React.
+2. ✅ Decodificar y procesar video a una tasa configurable de 1–15 FPS.
+3. ✅ Mantener identificadores mediante seguimiento IoU con confirmación y tolerancia a pérdidas cortas.
+4. 🟡 Contar `boarded` y `exited` al cruzar la línea de puerta; implementado, pendiente de validación con video real de puerta.
+5. ✅ Sincronizar cajas, IDs y métricas con la reproducción en React.
 
-No se avanzará al procesamiento de video hasta comprobar que las cajas de M1 coinciden correctamente con las personas.
+La cantidad de pasajeros únicos todavía es sensible a falsos positivos y fragmentación de tracks. Debe considerarse una métrica experimental hasta reentrenar el modelo con video real del autobús y validar el tracker.
 
 ## Archivos del modelo y pruebas
 
