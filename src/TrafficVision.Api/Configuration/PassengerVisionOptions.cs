@@ -53,3 +53,11 @@ public sealed class DoorEventOptions
 
     public int CooldownSeconds { get; set; } = 3;
 }
+
+public sealed class FeatureOptions
+{
+    public const string SectionName = "Features";
+
+    /// <summary>Allows analyzing uploaded images and videos; off for view-only deployments.</summary>
+    public bool UploadsEnabled { get; set; }
+}

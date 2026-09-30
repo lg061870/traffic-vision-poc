@@ -22,8 +22,13 @@ Rear (door) clips need a door line. Put `<video file name>.settings.json` next t
   "initialPassengers": 12,
   "doorLineStart": { "x": 0.1, "y": 0.7 },
   "doorLineEnd": { "x": 0.9, "y": 0.7 },
-  "insidePoint": { "x": 0.5, "y": 0.35 }
+  "insidePoint": { "x": 0.5, "y": 0.35 },
+  "movingCamera": false
 }
 ```
+
+Set `"movingCamera": true` for handheld or body-camera footage; the player then hides the unique-passenger count, which a moving camera inflates.
+
+`archive/` holds clips and results that should not be listed or deployed.
 
 Coordinates are fractions of the frame width and height; `insidePoint` is any point on the inside-the-bus side of the line.

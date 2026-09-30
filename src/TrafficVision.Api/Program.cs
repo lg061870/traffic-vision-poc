@@ -20,6 +20,8 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 builder.Services.AddOpenApi();
 builder.Services.Configure<PassengerVisionOptions>(
     builder.Configuration.GetSection(PassengerVisionOptions.SectionName));
+builder.Services.Configure<FeatureOptions>(
+    builder.Configuration.GetSection(FeatureOptions.SectionName));
 builder.Services.Configure<DemoLibraryOptions>(
     builder.Configuration.GetSection(DemoLibraryOptions.SectionName));
 builder.Services.AddSingleton<PassengerImageAnalyzer>();
@@ -81,6 +83,24 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors(frontendCorsPolicy);
+
+// Reject uploads before the request body is read when this deployment is view-only.
+var uploadsEnabled = app.Configuration.GetValue<bool>($"{FeatureOptions.SectionName}:{nameof(FeatureOptions.UploadsEnabled)}");
+app.Use(async (context, next) =>
+{
+    if (!uploadsEnabled &&
+        HttpMethods.IsPost(context.Request.Method) &&
+        context.Request.Path.StartsWithSegments("/api/passenger-analysis"))
+    {
+        await Results.Problem(
+            title: "Uploads are disabled on this deployment.",
+            statusCode: StatusCodes.Status403Forbidden).ExecuteAsync(context);
+        return;
+    }
+
+    await next();
+});
+
 app.UseAuthorization();
 
 app.MapControllers();

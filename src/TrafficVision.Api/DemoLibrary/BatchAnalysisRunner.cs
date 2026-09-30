@@ -18,7 +18,8 @@ public sealed record BatchClipSettings(
     int? InitialPassengers,
     NormalizedPoint? DoorLineStart,
     NormalizedPoint? DoorLineEnd,
-    NormalizedPoint? InsidePoint);
+    NormalizedPoint? InsidePoint,
+    bool? MovingCamera);
 
 public sealed record BatchArguments(
     string? InputPath,
@@ -41,7 +42,7 @@ public sealed record BatchArguments(
         Per-clip overrides: put "<video file name>.settings.json" next to the video, e.g.
           { "cameraView": "rear", "processingFps": 10, "initialPassengers": 12,
             "doorLineStart": { "x": 0.1, "y": 0.7 }, "doorLineEnd": { "x": 0.9, "y": 0.7 },
-            "insidePoint": { "x": 0.5, "y": 0.35 } }
+            "insidePoint": { "x": 0.5, "y": 0.35 }, "movingCamera": false }
         """;
 
     public static BatchArguments Parse(IReadOnlyList<string> args)
@@ -209,7 +210,8 @@ public sealed class BatchAnalysisRunner(
             Math.Max(0, clip?.InitialPassengers ?? visionOptions.Value.InitialPassengers),
             clip?.DoorLineStart ?? DefaultLineStart,
             clip?.DoorLineEnd ?? DefaultLineEnd,
-            clip?.InsidePoint ?? DefaultInsidePoint);
+            clip?.InsidePoint ?? DefaultInsidePoint,
+            clip?.MovingCamera ?? false);
     }
 
     private static bool IsUpToDate(string resultPath, string videoPath, string settingsPath)

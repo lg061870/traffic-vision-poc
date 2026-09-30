@@ -36,6 +36,7 @@ export type PassengerVideoSettings = {
   doorLineStart: NormalizedPoint
   doorLineEnd: NormalizedPoint
   insidePoint: NormalizedPoint
+  movingCamera?: boolean
 }
 
 export type PassengerVideoSummary = {

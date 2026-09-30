@@ -58,7 +58,8 @@ public sealed record PassengerVideoSettings(
     int InitialPassengers,
     NormalizedPoint DoorLineStart,
     NormalizedPoint DoorLineEnd,
-    NormalizedPoint InsidePoint);
+    NormalizedPoint InsidePoint,
+    bool MovingCamera = false);
 
 public sealed record VideoAnalysisAccepted(
     Guid JobId,
@@ -85,4 +86,5 @@ public sealed record VideoAnalysisRequestOptions(
     int InitialPassengers,
     NormalizedPoint DoorLineStart,
     NormalizedPoint DoorLineEnd,
-    NormalizedPoint InsidePoint);
+    NormalizedPoint InsidePoint,
+    bool MovingCamera = false);

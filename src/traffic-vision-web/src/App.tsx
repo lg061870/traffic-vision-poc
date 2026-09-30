@@ -25,6 +25,8 @@ import {
   Info,
   List,
   LogIn,
+  Maximize,
+  Minimize,
   LogOut,
   PersonStanding,
   Play,
@@ -81,6 +83,12 @@ const workflow = [
   { step: '3', label: 'View results', note: 'Review passenger insights', icon: BarChart3 },
 ] as const
 
+const demoWorkflow = [
+  { step: '1', label: 'Select', note: 'Pick a pre-analyzed video', icon: Film },
+  { step: '2', label: 'Play', note: 'Watch detections and tracks', icon: Play },
+  { step: '3', label: 'Review', note: 'Explore passenger insights', icon: BarChart3 },
+] as const
+
 function formatBytes(bytes: number) {
   if (bytes === 0) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB']
@@ -102,6 +110,8 @@ function formatPoint(point: DoorPoint) {
 function App() {
   const inputRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const [backendStatus, setBackendStatus] = useState<BackendStatus>('checking')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [videoDuration, setVideoDuration] = useState<number | null>(null)
@@ -129,6 +139,20 @@ function App() {
   const [selectedDemoId, setSelectedDemoId] = useState<string | null>(null)
   const [demoResult, setDemoResult] = useState<PassengerVideoResult | null>(null)
   const demoRequestRef = useRef(0)
+  const autoSelectedRef = useRef(false)
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(document.fullscreenElement === stageRef.current && stageRef.current !== null)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  // The browser's own full-screen mode shows only the <video>, so enlarge the stage with its overlays instead.
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen()
+    else void stageRef.current?.requestFullscreen()
+  }
+  const [uploadsEnabled, setUploadsEnabled] = useState(false)
 
   const fileUrl = useMemo(
     () => (selectedFile ? URL.createObjectURL(selectedFile) : null),
@@ -152,6 +176,7 @@ function App() {
     try {
       const health = await getHealth(controller.signal)
       setBackendStatus(health.status === 'ok' ? 'connected' : 'offline')
+      setUploadsEnabled(health.uploadsEnabled === true)
     } catch {
       setBackendStatus('offline')
     } finally {
@@ -279,6 +304,13 @@ function App() {
     }
   }
 
+  // Open the first demo video as soon as the library loads, so the page is ready to play.
+  useEffect(() => {
+    if (autoSelectedRef.current || selectedFile || selectedDemoId || demoVideos.length === 0) return
+    autoSelectedRef.current = true
+    void selectDemo(demoVideos[0])
+  }, [demoVideos, selectedFile, selectedDemoId])
+
   const clearFile = () => {
     demoRequestRef.current++
     setSelectedFile(null)
@@ -378,17 +410,25 @@ function App() {
   const result = analysisJob?.result ?? demoResult
   const frameSize = videoSize ?? (result ? { width: result.width, height: result.height } : null)
   const analysisRunning = isUploading || analysisJob?.status === 'Queued' || analysisJob?.status === 'Processing'
+  // Unconfirmed tracks are mostly one-frame flickers, so the UI only shows confirmed ones.
+  const displayFrames = useMemo<PassengerVideoFrame[]>(
+    () => result?.frames.map((frame) => ({
+      ...frame,
+      detections: frame.detections.filter((detection) => detection.confirmed),
+    })) ?? [],
+    [result],
+  )
   const activeFrame = useMemo<PassengerVideoFrame | null>(() => {
-    if (!result?.frames.length) return null
-    let nearest = result.frames[0]
-    for (const frame of result.frames) {
+    if (!displayFrames.length) return null
+    let nearest = displayFrames[0]
+    for (const frame of displayFrames) {
       if (Math.abs(frame.timestampSeconds - videoTime) < Math.abs(nearest.timestampSeconds - videoTime)) {
         nearest = frame
       }
       if (frame.timestampSeconds > videoTime) break
     }
     return nearest
-  }, [result, videoTime])
+  }, [displayFrames, videoTime])
   const visibleDetections = activeFrame?.detections ?? []
   const currentSitting = visibleDetections.filter((item) => item.className === 'sitting').length
   const currentStanding = visibleDetections.filter((item) => item.className === 'standing').length
@@ -419,14 +459,14 @@ function App() {
     if (videoRef.current) videoRef.current.currentTime = seconds
   }
   const timelineFrames = useMemo(() => {
-    if (!result?.frames.length) return []
-    const step = Math.max(1, Math.floor(result.frames.length / 10))
-    return result.frames.filter((_, index) => index % step === 0).slice(0, 10)
-  }, [result])
+    if (!displayFrames.length) return []
+    const step = Math.max(1, Math.floor(displayFrames.length / 10))
+    return displayFrames.filter((_, index) => index % step === 0).slice(0, 10)
+  }, [displayFrames])
   const trackSummaries = useMemo(() => {
     if (!result) return []
     const tracks = new Map<number, { id: number; first: number; last: number; observations: number; className: string }>()
-    for (const frame of result.frames) {
+    for (const frame of displayFrames) {
       for (const detection of frame.detections) {
         const existing = tracks.get(detection.trackId)
         if (existing) {
@@ -445,7 +485,7 @@ function App() {
       }
     }
     return [...tracks.values()].sort((a, b) => a.id - b.id)
-  }, [result])
+  }, [displayFrames])
 
   return (
     <div className="app-shell">
@@ -458,9 +498,11 @@ function App() {
         <nav className="topnav" aria-label="Primary navigation">
           <a className="nav-link nav-link--active" href="#main"><Home size={18} />Home</a>
           <a className="nav-link" href="#about"><Info size={18} />About</a>
-          <button className="nav-link nav-button" type="button" onClick={() => setSettingsOpen(true)}>
-            <Settings size={18} />Settings
-          </button>
+          {uploadsEnabled && (
+            <button className="nav-link nav-button" type="button" onClick={() => setSettingsOpen(true)}>
+              <Settings size={18} />Settings
+            </button>
+          )}
         </nav>
         <BackendStatusPill status={backendStatus} onRetry={() => void checkBackend()} />
       </header>
@@ -469,25 +511,30 @@ function App() {
         <section className="intro-panel" aria-labelledby="page-title">
           <div className="intro-copy">
             <p className="eyebrow"><Camera size={16} />Onboard camera workspace</p>
-            <h1 id="page-title">Upload bus camera footage</h1>
-            <p>Detect seated and standing passengers and count boardings and exits from onboard camera video.</p>
+            <h1 id="page-title">{uploadsEnabled ? 'Upload bus camera footage' : 'Onboard passenger analysis'}</h1>
+            <p>
+              {uploadsEnabled
+                ? 'Detect seated and standing passengers and count boardings and exits from onboard camera video.'
+                : 'Pre-analyzed onboard video: seated and standing passengers detected and tracked by the RF-DETR model.'}
+            </p>
           </div>
           <ol className="workflow" aria-label="Passenger analysis workflow">
-            {workflow.map(({ step, label, note, icon: Icon }, index) => (
+            {(uploadsEnabled ? workflow : demoWorkflow).map(({ step, label, note, icon: Icon }, index) => (
               <li key={step} className={index === 0 ? 'workflow-step workflow-step--active' : 'workflow-step'}>
                 <span className="workflow-icon"><Icon size={22} /></span>
                 <span className="workflow-copy"><strong>{step}. {label}</strong><small>{note}</small></span>
-                {index < workflow.length - 1 && <ChevronRight className="workflow-arrow" size={20} />}
+                {index < 2 && <ChevronRight className="workflow-arrow" size={20} />}
               </li>
             ))}
           </ol>
         </section>
 
-        <section className="workspace" aria-label="Bus passenger analysis workspace">
+        <section className={uploadsEnabled ? 'workspace' : 'workspace workspace--demo'} aria-label="Bus passenger analysis workspace">
+          {uploadsEnabled && (
           <aside className="card upload-card">
             <div className="card-heading">
               <span className="heading-icon"><Film size={20} /></span>
-              <div><span className="section-index">01</span><h2>Upload footage</h2></div>
+              <div><span className="section-index">01</span><h2>{uploadsEnabled ? 'Upload footage' : 'Demo video'}</h2></div>
             </div>
 
             {demoVideos.length > 0 && (
@@ -513,6 +560,7 @@ function App() {
               </fieldset>
             )}
 
+            {uploadsEnabled && (<>
             <fieldset className="camera-selector" disabled={selectedDemoId !== null}>
               <legend>Camera view</legend>
               <div className="camera-options">
@@ -558,6 +606,7 @@ function App() {
             </div>
             <p className="file-hint">MP4, MOV, AVI or MKV · up to 500 MB</p>
             {uploadError && <p className="inline-alert inline-alert--error" role="alert">{uploadError}</p>}
+            </>)}
 
             {selectedFile ? (
               <div className="selected-file">
@@ -575,15 +624,16 @@ function App() {
                   <strong title={selectedDemo.video}>{selectedDemo.video}</strong>
                   <small>Pre-analyzed demo · {formatDuration(selectedDemo.durationSeconds)} · {selectedDemo.cameraView === 'front' ? 'Front camera' : 'Rear camera'}</small>
                 </span>
-                <button className="icon-button" type="button" onClick={clearFile} aria-label="Close demo video"><X size={18} /></button>
+                {uploadsEnabled && <button className="icon-button" type="button" onClick={clearFile} aria-label="Close demo video"><X size={18} /></button>}
               </div>
             ) : (
               <div className="selected-file selected-file--empty">
                 <span className="file-icon"><Film size={20} /></span>
-                <span className="file-copy"><strong>No video selected</strong><small>Select footage to send it to the real RF-DETR analysis API.</small></span>
+                <span className="file-copy"><strong>No video selected</strong><small>{uploadsEnabled ? 'Select footage to send it to the real RF-DETR analysis API.' : demoVideos.length ? 'Loading the demo video…' : 'No pre-analyzed videos are available yet.'}</small></span>
               </div>
             )}
 
+            {uploadsEnabled && (<>
             <button className="button button--run" type="button" disabled={!selectedFile || analysisRunning} onClick={() => void requestAnalysis()}>
               <Play size={17} fill="currentColor" />{isUploading ? 'Uploading…' : analysisRunning ? 'Analysis running…' : 'Run passenger analysis'}
             </button>
@@ -594,8 +644,10 @@ function App() {
                 {analysisJobId && <button type="button" onClick={() => void stopAnalysis()}>Cancel</button>}
               </div>
             )}
+            </>)}
             {analysisMessage && <p className="inline-alert" role="status">{analysisMessage}</p>}
           </aside>
+          )}
 
           <section className="card video-card" aria-labelledby="video-title">
             <div className="card-heading card-heading--spread">
@@ -603,14 +655,37 @@ function App() {
                 <span className="heading-icon"><Video size={20} /></span>
                 <div><span className="section-index">02</span><h2 id="video-title">Passenger video preview</h2></div>
               </div>
-              <span className="stage-badge">{cameraView === 'front' ? 'Front · seating area' : 'Rear · front door'}</span>
+              <div className="video-actions">
+                {!uploadsEnabled && demoVideos.length > 1 && (
+                  <select
+                    className="demo-select"
+                    aria-label="Demo video"
+                    value={selectedDemoId ?? ''}
+                    onChange={(event) => {
+                      const demo = demoVideos.find((item) => item.id === event.target.value)
+                      if (demo) void selectDemo(demo)
+                    }}
+                  >
+                    {demoVideos.map((demo) => <option key={demo.id} value={demo.id}>{demo.video}</option>)}
+                  </select>
+                )}
+                <span className="stage-badge">{cameraView === 'front' ? 'Front · seating area' : 'Rear · front door'}</span>
+                {videoUrl && (
+                  <button className="icon-button" type="button" onClick={toggleFullscreen} aria-label={isFullscreen ? 'Exit full screen' : 'Full screen with detections'} title="Full screen with detections">
+                    {isFullscreen ? <Minimize size={17} /> : <Maximize size={17} />}
+                  </button>
+                )}
+              </div>
             </div>
-            <div className={`video-stage${doorEditorPhase ? ' video-stage--editing' : ''}`}>
+            <div ref={stageRef} className={`video-stage${doorEditorPhase ? ' video-stage--editing' : ''}`}>
               {videoUrl ? (
                 <video
                   ref={videoRef}
                   src={videoUrl}
                   controls={!doorEditorPhase}
+                  controlsList="nofullscreen"
+                  disablePictureInPicture
+                  onDoubleClick={toggleFullscreen}
                   preload="metadata"
                   onLoadedMetadata={(event) => {
                     const video = event.currentTarget
@@ -630,8 +705,12 @@ function App() {
                   <span className="scan-frame scan-frame--two" />
                   <span className="video-empty-icon"><Users size={34} /></span>
                   <strong>Your onboard video preview will appear here</strong>
-                  <p>Select bus footage to review it before passenger analysis.</p>
-                  <button className="text-action" type="button" onClick={() => inputRef.current?.click()}>Choose a video</button>
+                  <p>{uploadsEnabled
+                    ? 'Select bus footage to review it before passenger analysis.'
+                    : backendStatus === 'offline'
+                      ? 'The analysis server is offline. Start the API, then click “Backend offline” to retry.'
+                      : 'Loading the pre-analyzed demo video…'}</p>
+                  {uploadsEnabled && <button className="text-action" type="button" onClick={() => inputRef.current?.click()}>Choose a video</button>}
                 </div>
               )}
 
@@ -642,7 +721,7 @@ function App() {
                   preserveAspectRatio="xMidYMid meet"
                   aria-label={`Passenger detections at ${activeFrame.timestampSeconds.toFixed(1)} seconds`}
                 >
-                  {activeFrame.detections.map((detection) => {
+                  {visibleDetections.map((detection) => {
                     const color = detection.className === 'sitting' ? '#ec3fc8' : '#843fe5'
                     const labelY = Math.max(18, detection.box.y1)
                     return (
@@ -741,7 +820,7 @@ function App() {
               ))}
             </ul>
             <div className="summary-totals">
-              <div><span><Database size={17} />Unique passengers (tracked)</span><strong>{result?.summary.uniquePassengers ?? '—'}</strong></div>
+              <div><span><Database size={17} />Unique passengers (tracked)</span><strong title={result?.settings?.movingCamera ? 'Not shown: a moving camera splits one passenger into many tracks.' : undefined}>{result?.settings?.movingCamera ? 'n/a' : result?.summary.uniquePassengers ?? '—'}</strong></div>
               <div><span><Clock size={17} />Video duration</span><strong>{formatDuration(result?.durationSeconds ?? videoDuration)}</strong></div>
               <div><span><Gauge size={17} />Processed FPS</span><strong>{result ? result.processingFps.toFixed(1) : '—'}</strong></div>
               {result && <div><span><Clock size={17} />Analysis time</span><strong>{formatDuration(result.elapsedSeconds)}</strong></div>}
@@ -777,7 +856,7 @@ function App() {
           ) : reviewTab === 'detections' ? (
             <div className="result-table-wrap" role="tabpanel">
               <table className="result-table"><thead><tr><th>Time</th><th>Track</th><th>Class</th><th>Confidence</th></tr></thead><tbody>
-                {result.frames.flatMap((frame) => frame.detections.map((detection) => (
+                {displayFrames.flatMap((frame) => frame.detections.map((detection) => (
                   <tr key={`${frame.frameNumber}-${detection.trackId}`}><td>{formatDuration(frame.timestampSeconds)}</td><td>ID {detection.trackId}</td><td>{detection.className}</td><td>{(detection.score * 100).toFixed(1)}%</td></tr>
                 ))).slice(0, 250)}
               </tbody></table>

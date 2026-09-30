@@ -1661,3 +1661,57 @@ input:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* View-only demo: no upload column, so the video takes that width at its natural 16:9 shape. */
+.workspace.workspace--demo {
+  grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr);
+}
+
+.workspace--demo .video-stage,
+.workspace--demo .video-stage video {
+  min-height: 0;
+  height: auto;
+  aspect-ratio: 16 / 9;
+}
+
+.video-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.demo-select {
+  max-width: 220px;
+  padding: 6px 8px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.75rem;
+  background: #f6f9fc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+/* Full screen keeps the SVG overlays: the whole stage goes full screen, not just the video. */
+.video-stage:fullscreen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  border-radius: 0;
+}
+
+.video-stage:fullscreen video,
+.workspace--demo .video-stage:fullscreen video {
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto;
+  background: #000;
+}
+
+@media (max-width: 1260px) {
+  .workspace.workspace--demo {
+    grid-template-columns: 1fr;
+  }
+}

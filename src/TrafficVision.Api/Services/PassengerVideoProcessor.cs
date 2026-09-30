@@ -159,7 +159,8 @@ public sealed class PassengerVideoProcessor(
                 options.InitialPassengers,
                 options.DoorLineStart,
                 options.DoorLineEnd,
-                options.InsidePoint),
+                options.InsidePoint,
+                options.MovingCamera),
             frames,
             doorEvents,
             new PassengerVideoSummary(
