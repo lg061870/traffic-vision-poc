@@ -166,9 +166,9 @@ public sealed class SimulatedBus
     {
         >= 5 and < 8 => Inbound ? 1.0 : 0.25,
         >= 8 and < 9 => Inbound ? 0.45 : 0.25,
-        >= 9 and < 16 => 0.11,
+        >= 9 and < 16 => 0.2,
         >= 16 and < 19 => Inbound ? 0.25 : 1.0,
-        >= 19 and < 22 => Inbound ? 0.12 : 0.17,
+        >= 19 and < 22 => Inbound ? 0.2 : 0.26,
         _ => 0.03
     };
 
