@@ -112,14 +112,28 @@ public sealed class ScenarioTimeline
 
     private static List<(TimeSpan, int, int)> PlanFrames(Scenario scenario, IReadOnlyList<ScriptedDoorEvent> doorEvents)
     {
+        // Who the cabin camera can see changes slightly before the door counter does: people
+        // getting off walk to the door, out of view, as soon as it opens, while people getting
+        // on appear when they are counted. So the camera never sees more than the counter.
+        var changes = new List<(TimeSpan At, int Change)>();
+        var openedAt = new Dictionary<int, TimeSpan>();
+        foreach (var item in doorEvents)
+        {
+            if (item.Type == RawFormats.DoorOpened)
+            {
+                openedAt[item.Door] = item.At;
+            }
+
+            changes.Add((item.At, item.In ?? 0));
+            changes.Add((openedAt.GetValueOrDefault(item.Door, item.At), -(item.Out ?? 0)));
+        }
+
         var frames = new List<(TimeSpan, int, int)>();
         var index = 0;
         for (var at = TimeSpan.Zero; at < scenario.Duration; at += TimeSpan.FromSeconds(scenario.Vision.FrameIntervalSeconds))
         {
-            var onBoard = scenario.InitialOnBoard + doorEvents
-                .Where(item => item.At <= at)
-                .Sum(item => (item.In ?? 0) - (item.Out ?? 0));
-            frames.Add((at, index++, Math.Max(0, onBoard)));
+            var inView = scenario.InitialOnBoard + changes.Where(change => change.At <= at).Sum(change => change.Change);
+            frames.Add((at, index++, Math.Max(0, inView)));
         }
 
         return frames;
