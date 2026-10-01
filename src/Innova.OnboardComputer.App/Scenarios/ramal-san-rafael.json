@@ -1,0 +1,82 @@
+// A 20-minute round trip of a feeder bus on Ramal San Rafael (R142-05): the Coronado terminal
+// (km 0) out to San Rafael (km 2.34) and back, with three stops each way. Every "at" is an offset
+// from minute 0; replaying re-stamps them so minute 0 is "now". Boardings and exits balance, so
+// the scenario loops without the passenger count drifting.
+{
+  "name": "Ramal San Rafael (R142-05): terminal de Coronado → San Rafael → terminal",
+  "routesFile": "coronado-routes-osm.geojson",
+  "routeId": "R142-05",
+  "duration": "00:20:00",
+  "initialOnBoard": 0,
+  "gps": {
+    "intervalSeconds": 1,
+    "track": [
+      { "at": "00:00:00", "km": 0 },
+      { "at": "00:00:55", "km": 0 },
+      { "at": "00:02:45", "km": 0.6 },
+      { "at": "00:03:15", "km": 0.6 },
+      { "at": "00:05:05", "km": 1.2 },
+      { "at": "00:05:33", "km": 1.2 },
+      { "at": "00:07:23", "km": 1.8 },
+      { "at": "00:07:50", "km": 1.8 },
+      { "at": "00:09:30", "km": 2.34 },
+      { "at": "00:10:10", "km": 2.34 },
+      { "at": "00:11:50", "km": 1.8 },
+      { "at": "00:12:15", "km": 1.8 },
+      { "at": "00:14:05", "km": 1.2 },
+      { "at": "00:14:33", "km": 1.2 },
+      { "at": "00:16:23", "km": 0.6 },
+      { "at": "00:16:50", "km": 0.6 },
+      { "at": "00:18:40", "km": 0 },
+      { "at": "00:20:00", "km": 0 }
+    ]
+  },
+  "doorEvents": [
+    { "at": "00:00:05", "door": 1, "type": "DOOR_OPENED" },
+    { "at": "00:00:20", "door": 1, "type": "COUNT", "in": 12, "out": 0 },
+    { "at": "00:00:40", "door": 1, "type": "COUNT", "in": 6, "out": 0 },
+    { "at": "00:00:50", "door": 1, "type": "DOOR_CLOSED" },
+
+    { "at": "00:02:48", "door": 1, "type": "DOOR_OPENED" },
+    { "at": "00:03:00", "door": 1, "type": "COUNT", "in": 2, "out": 4 },
+    { "at": "00:03:10", "door": 1, "type": "DOOR_CLOSED" },
+
+    { "at": "00:05:08", "door": 1, "type": "DOOR_OPENED" },
+    { "at": "00:05:20", "door": 1, "type": "COUNT", "in": 1, "out": 5 },
+    { "at": "00:05:28", "door": 1, "type": "DOOR_CLOSED" },
+
+    { "at": "00:07:26", "door": 1, "type": "DOOR_OPENED" },
+    { "at": "00:07:38", "door": 1, "type": "COUNT", "in": 0, "out": 6 },
+    { "at": "00:07:45", "door": 1, "type": "DOOR_CLOSED" },
+
+    { "at": "00:09:33", "door": 1, "type": "DOOR_OPENED" },
+    { "at": "00:09:45", "door": 1, "type": "COUNT", "in": 0, "out": 6 },
+    { "at": "00:09:55", "door": 1, "type": "COUNT", "in": 4, "out": 0 },
+    { "at": "00:10:05", "door": 1, "type": "DOOR_CLOSED" },
+
+    { "at": "00:11:53", "door": 1, "type": "DOOR_OPENED" },
+    { "at": "00:12:03", "door": 1, "type": "COUNT", "in": 5, "out": 0 },
+    { "at": "00:12:10", "door": 1, "type": "DOOR_CLOSED" },
+
+    { "at": "00:14:08", "door": 1, "type": "DOOR_OPENED" },
+    { "at": "00:14:20", "door": 1, "type": "COUNT", "in": 7, "out": 1 },
+    { "at": "00:14:28", "door": 1, "type": "DOOR_CLOSED" },
+
+    { "at": "00:16:26", "door": 1, "type": "DOOR_OPENED" },
+    { "at": "00:16:38", "door": 1, "type": "COUNT", "in": 3, "out": 2 },
+    { "at": "00:16:45", "door": 1, "type": "DOOR_CLOSED" },
+
+    { "at": "00:18:43", "door": 1, "type": "DOOR_OPENED" },
+    { "at": "00:18:55", "door": 1, "type": "COUNT", "in": 0, "out": 16 },
+    { "at": "00:19:10", "door": 1, "type": "DOOR_CLOSED" }
+  ],
+  "vision": {
+    "model": "bus-passengers-rfdetr-s-v1",
+    "camera": "cabin-front",
+    "frameIntervalSeconds": 2,
+    "seatsInView": 14,
+    "maxVisible": 30,
+    "missRate": 0.05,
+    "seed": 142
+  }
+}
