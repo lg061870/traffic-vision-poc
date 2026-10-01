@@ -44,7 +44,7 @@ dotnet run --project src/Innova.Occupancy.Api
 
 ## Datos crudos (`POST /raw`)
 
-El **OnboardComputerApp** (en el bus o en un servidor) envía un mensaje cada ~10 s y al cerrarse las puertas. Cada parte conserva el formato de su fuente, así que reemplazar un sensor simulado por uno real solo requiere un adaptador:
+El [**OnboardComputerApp**](../Innova.OnboardComputer.App/README.md) (en el bus o en un servidor) envía un mensaje cada ~10 s y al cerrarse las puertas. Cada parte conserva el formato de su fuente, así que reemplazar un sensor simulado por uno real solo requiere un adaptador:
 
 | Parte | Formato | Adaptador |
 |---|---|---|
