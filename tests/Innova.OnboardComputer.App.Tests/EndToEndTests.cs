@@ -34,7 +34,7 @@ public sealed class EndToEndTests : IDisposable
     {
         var bus = CreateBus(new OccupancyApiClient(_api.CreateClient(), TestSupport.Options(deviceKey: DeviceKey)));
 
-        // The first minute: 18 people board at the Coronado terminal and the doors close at 00:50.
+        // The first minute: 18 people board at the Coronado terminal and the doors close at 00:47.
         await bus.RunAsync(TimeSpan.FromSeconds(60));
 
         var reader = _api.CreateClient();
@@ -42,8 +42,8 @@ public sealed class EndToEndTests : IDisposable
         var events = await reader.GetFromJsonAsync<JsonElement>($"/api/v1/vehicles/{TestSupport.Bus}/events");
 
         Assert.Equal(0, bus.Outbox.Count);
-        // One message per 10 s; the doors close at 00:50, on a 10-s tick, so that is one message too.
-        Assert.Equal(6, bus.Sent);
+        // One message per 10 s, plus one when the doors close at 00:47.
+        Assert.Equal(7, bus.Sent);
         var location = state.GetProperty("location");
         Assert.Equal(9.976, location.GetProperty("lat").GetDouble(), 2);
         Assert.Equal(-84.007, location.GetProperty("lon").GetDouble(), 2);
@@ -134,7 +134,8 @@ public sealed class EndToEndTests : IDisposable
             {
                 _time.Advance(TimeSpan.FromSeconds(1));
                 _player.PlayUntil(_time.GetUtcNow());
-                if (_doorClosed || ++_seconds % 10 == 0)
+                _seconds++;
+                if (_doorClosed || _seconds % 10 == 0)
                 {
                     _doorClosed = false;
                     Sent++;

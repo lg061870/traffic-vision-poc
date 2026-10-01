@@ -35,11 +35,11 @@
     { "at": "00:00:05", "door": 1, "type": "DOOR_OPENED" },
     { "at": "00:00:20", "door": 1, "type": "COUNT", "in": 12, "out": 0 },
     { "at": "00:00:40", "door": 1, "type": "COUNT", "in": 6, "out": 0 },
-    { "at": "00:00:50", "door": 1, "type": "DOOR_CLOSED" },
+    { "at": "00:00:47", "door": 1, "type": "DOOR_CLOSED" },
 
     { "at": "00:02:48", "door": 1, "type": "DOOR_OPENED" },
     { "at": "00:03:00", "door": 1, "type": "COUNT", "in": 2, "out": 4 },
-    { "at": "00:03:10", "door": 1, "type": "DOOR_CLOSED" },
+    { "at": "00:03:12", "door": 1, "type": "DOOR_CLOSED" },
 
     { "at": "00:05:08", "door": 1, "type": "DOOR_OPENED" },
     { "at": "00:05:20", "door": 1, "type": "COUNT", "in": 1, "out": 5 },
@@ -56,7 +56,7 @@
 
     { "at": "00:11:53", "door": 1, "type": "DOOR_OPENED" },
     { "at": "00:12:03", "door": 1, "type": "COUNT", "in": 5, "out": 0 },
-    { "at": "00:12:10", "door": 1, "type": "DOOR_CLOSED" },
+    { "at": "00:12:12", "door": 1, "type": "DOOR_CLOSED" },
 
     { "at": "00:14:08", "door": 1, "type": "DOOR_OPENED" },
     { "at": "00:14:20", "door": 1, "type": "COUNT", "in": 7, "out": 1 },
@@ -68,7 +68,7 @@
 
     { "at": "00:18:43", "door": 1, "type": "DOOR_OPENED" },
     { "at": "00:18:55", "door": 1, "type": "COUNT", "in": 0, "out": 16 },
-    { "at": "00:19:10", "door": 1, "type": "DOOR_CLOSED" }
+    { "at": "00:19:08", "door": 1, "type": "DOOR_CLOSED" }
   ],
   "vision": {
     "model": "bus-passengers-rfdetr-s-v1",
