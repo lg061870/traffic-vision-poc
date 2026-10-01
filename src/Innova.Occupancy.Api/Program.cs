@@ -8,7 +8,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers().AddJsonOptions(options =>
     // SNAKE_CASE_UPPER enum names match GTFS-Realtime, e.g. FEW_SEATS_AVAILABLE.
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseUpper)));
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
+{
+    // Tools such as Postman join the server URL with each path; a trailing slash makes "//api/...".
+    foreach (var server in document.Servers ?? [])
+    {
+        server.Url = server.Url?.TrimEnd('/');
+    }
+
+    return Task.CompletedTask;
+}));
 builder.Services.AddProblemDetails();
 
 builder.Services.Configure<OccupancyApiOptions>(builder.Configuration.GetSection(OccupancyApiOptions.SectionName));

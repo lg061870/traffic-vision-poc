@@ -87,6 +87,9 @@ public sealed class VehiclesApiTests
         var document = await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json");
 
         Assert.True(document.GetProperty("paths").TryGetProperty("/api/v1/vehicles/{vehicleId}/observations", out _));
+        Assert.All(
+            document.GetProperty("servers").EnumerateArray(),
+            server => Assert.False(server.GetProperty("url").GetString()!.EndsWith('/')));
     }
 
     private static HttpClient CreateClient(params (string Key, string Value)[] settings)
