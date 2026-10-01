@@ -42,6 +42,14 @@ public sealed class IngestionOptions
     public Dictionary<string, string> DeviceKeys { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
+public sealed class FleetOptions
+{
+    public const string SectionName = "Fleet";
+
+    /// <summary>Registered buses and their capacity; raw data from unregistered buses is rejected.</summary>
+    public string RegistryFile { get; set; } = "MockData/coronado-fleet.json";
+}
+
 public sealed class MockFleetOptions
 {
     public const string SectionName = "MockFleet";

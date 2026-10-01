@@ -1,4 +1,5 @@
 using Innova.Occupancy.Api.Configuration;
+using Innova.Occupancy.Api.Ingestion;
 using Innova.Occupancy.Api.Models;
 using Innova.Occupancy.Api.Vehicles.Simulation;
 using Microsoft.Extensions.Options;
@@ -11,6 +12,7 @@ namespace Innova.Occupancy.Api.Vehicles;
 /// </summary>
 public sealed class MockFleetSimulator(
     VehicleStateStore store,
+    RawAggregator rawData,
     IOptions<MockFleetOptions> options,
     IHostEnvironment environment,
     TimeProvider time,
@@ -66,7 +68,11 @@ public sealed class MockFleetSimulator(
             var now = time.GetUtcNow();
             foreach (var bus in buses)
             {
-                store.Apply(bus.VehicleId, bus.Step(now, interval, random, hourOverride));
+                // A bus whose OnboardComputerApp is sending raw data is driven by that data.
+                if (!rawData.HasRecentRawData(bus.VehicleId, now))
+                {
+                    store.Apply(bus.VehicleId, bus.Step(now, interval, random, hourOverride));
+                }
             }
         }
         while (await timer.WaitForNextTickAsync(stoppingToken));

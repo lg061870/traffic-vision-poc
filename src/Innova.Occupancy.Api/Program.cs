@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Innova.Occupancy.Api.Configuration;
+using Innova.Occupancy.Api.Ingestion;
 using Innova.Occupancy.Api.Vehicles;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,8 +24,15 @@ builder.Services.AddProblemDetails();
 builder.Services.Configure<OccupancyApiOptions>(builder.Configuration.GetSection(OccupancyApiOptions.SectionName));
 builder.Services.Configure<IngestionOptions>(builder.Configuration.GetSection(IngestionOptions.SectionName));
 builder.Services.Configure<MockFleetOptions>(builder.Configuration.GetSection(MockFleetOptions.SectionName));
+builder.Services.Configure<FleetOptions>(builder.Configuration.GetSection(FleetOptions.SectionName));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<VehicleStateStore>();
+builder.Services.AddSingleton<FleetRegistry>();
+builder.Services.AddSingleton<DeviceAuthorizer>();
+builder.Services.AddSingleton<RawAggregator>();
+// One adapter per door-counter format; a real counter only needs its own adapter here.
+builder.Services.AddSingleton<IDoorCounterAdapter, ApcDoorEventsV1Adapter>();
+builder.Services.AddSingleton<DoorCounterAdapterRegistry>();
 builder.Services.AddHostedService<MockFleetSimulator>();
 
 // Read access is open while client apps are built against the mock; writes need a device key.

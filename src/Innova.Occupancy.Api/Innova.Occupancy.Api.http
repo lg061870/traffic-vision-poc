@@ -28,5 +28,41 @@ X-Device-Key: dev-key-if-configured
   "device": { "cameraOnline": true, "firmware": "1.0.3" }
 }
 
+### Raw data from an OnboardComputerApp: GPS (NMEA 0183), door counter, vision results.
+### The API does all the calculations. Use a "sequence" higher than the last one sent and a
+### recent "sentAt" (NMEA sentences carry their own time and checksum; RMC has the date).
+POST {{host}}/api/v1/vehicles/SJB-16959/raw
+Content-Type: application/json
+X-Device-Key: dev-key-if-configured
+
+{
+  "sequence": 1,
+  "sentAt": "2026-10-01T00:15:12Z",
+  "gps": {
+    "format": "NMEA-0183",
+    "sentences": [
+      "$GPRMC,001510.00,A,0956.7918,N,08403.2106,W,0.0,87.5,011026,,,A*70",
+      "$GPGGA,001510.00,0956.7918,N,08403.2106,W,1,09,0.9,1191.0,M,,M,,*5A"
+    ]
+  },
+  "doorCounter": {
+    "format": "apc-door-events-v1",
+    "events": [
+      { "door": 1, "type": "DOOR_OPENED", "at": "2026-10-01T00:15:02Z" },
+      { "door": 1, "type": "COUNT", "in": 3, "out": 1, "at": "2026-10-01T00:15:09Z" },
+      { "door": 1, "type": "DOOR_CLOSED", "at": "2026-10-01T00:15:11Z" }
+    ]
+  },
+  "vision": {
+    "model": "bus-passengers-rfdetr-s-v1",
+    "camera": "cabin-front",
+    "frames": [
+      { "at": "2026-10-01T00:15:10.0Z", "detections": [
+        { "trackId": 12, "class": "sitting", "score": 0.88, "box": [401, 123, 495, 279] },
+        { "trackId": 15, "class": "standing", "score": 0.71, "box": [132, 80, 248, 352] } ] }
+    ]
+  }
+}
+
 ### OpenAPI contract
 GET {{host}}/openapi/v1.json

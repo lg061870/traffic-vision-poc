@@ -1,11 +1,7 @@
 using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
-using Innova.Occupancy.Api.Configuration;
 using Innova.Occupancy.Api.Models;
 using Innova.Occupancy.Api.Vehicles;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 
 namespace Innova.Occupancy.Api.Controllers;
 
@@ -18,11 +14,9 @@ namespace Innova.Occupancy.Api.Controllers;
 [Produces("application/json")]
 public sealed class VehiclesController(
     VehicleStateStore store,
-    IOptions<IngestionOptions> ingestion,
+    DeviceAuthorizer authorizer,
     TimeProvider time) : ControllerBase
-{
-    public const string DeviceKeyHeader = "X-Device-Key";
-    private const int MaximumCapacity = 500;
+{    private const int MaximumCapacity = 500;
     private static readonly TimeSpan MinimumInterval = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan MaximumRange = TimeSpan.FromDays(7);
     private static readonly TimeSpan MaximumClockSkew = TimeSpan.FromMinutes(5);
@@ -113,17 +107,17 @@ public sealed class VehiclesController(
     public IActionResult PostObservation(
         string vehicleId,
         [FromBody] VehicleObservation observation,
-        [FromHeader(Name = DeviceKeyHeader)] string? deviceKey)
+        [FromHeader(Name = DeviceAuthorizer.Header)] string? deviceKey)
     {
         if (!VehicleId.TryNormalize(vehicleId, out var id))
         {
             return InvalidVehicleId();
         }
 
-        if (!IsAuthorized(id, deviceKey))
+        if (!authorizer.IsAuthorized(id, deviceKey))
         {
             return Problem(
-                title: $"A valid {DeviceKeyHeader} header is required for this bus.",
+                title: $"A valid {DeviceAuthorizer.Header} header is required for this bus.",
                 statusCode: StatusCodes.Status401Unauthorized);
         }
 
@@ -134,21 +128,6 @@ public sealed class VehiclesController(
 
         store.Apply(id, observation);
         return Accepted(new ObservationAccepted(id, time.GetUtcNow()));
-    }
-
-    private bool IsAuthorized(string vehicleId, string? deviceKey)
-    {
-        var keys = ingestion.Value.DeviceKeys;
-        if (keys.Count == 0)
-        {
-            return true;
-        }
-
-        return deviceKey is not null &&
-               keys.TryGetValue(vehicleId, out var expected) &&
-               CryptographicOperations.FixedTimeEquals(
-                   Encoding.UTF8.GetBytes(deviceKey),
-                   Encoding.UTF8.GetBytes(expected));
     }
 
     private string? Validate(VehicleObservation observation)
