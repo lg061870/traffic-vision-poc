@@ -1,0 +1,32 @@
+@host = http://localhost:5189
+
+### Latest state of every bus
+GET {{host}}/api/v1/vehicles
+
+### Latest state of one bus (a Route 142 trunk bus in the mock fleet; ids are normalized, lower case also works)
+GET {{host}}/api/v1/vehicles/SJB-16959
+
+### Boarding and exit events in the last hour
+GET {{host}}/api/v1/vehicles/SJB-16959/events
+
+### Occupancy history in 1-minute buckets (defaults: last hour, 5m)
+GET {{host}}/api/v1/vehicles/SJB-16959/history?interval=1m
+
+### What an on-board device sends after processing video and sensor data
+POST {{host}}/api/v1/vehicles/SJB-1001/observations
+Content-Type: application/json
+X-Device-Key: dev-key-if-configured
+
+{
+  "timestamp": "2026-10-05T08:01:10-06:00",
+  "location": { "lat": 9.9352, "lon": -84.0431, "speedKmh": 22 },
+  "occupancy": { "passengerCount": 78, "capacity": 110, "source": "DOOR_COUNTER_3D" },
+  "doorEvents": [
+    { "door": 1, "boardings": 4, "alightings": 1,
+      "openedAt": "2026-10-05T07:59:02-06:00", "closedAt": "2026-10-05T07:59:40-06:00" }
+  ],
+  "device": { "cameraOnline": true, "firmware": "1.0.3" }
+}
+
+### OpenAPI contract
+GET {{host}}/openapi/v1.json

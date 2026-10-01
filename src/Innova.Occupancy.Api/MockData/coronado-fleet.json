@@ -1,0 +1,503 @@
+{
+  "operator": {
+    "name": "Autobuses Unidos de Coronado S.A.",
+    "dailyRiders": 28000,
+    "notes": "MOCK DATA. Fleet counts (43 = 27 trunk + 16 feeder, 10 ramales) and ~28,000 riders/day come from the team's research notes and are unverified. Plates, capacities, coordinates and ramal names marked 'por definir' are invented approximations, not real operator data."
+  },
+  "routes": [
+    {
+      "routeId": "R142",
+      "name": "Ruta 142 · San José – San Isidro de Coronado",
+      "kind": "TRUNK",
+      "corridor": [
+        {
+          "lat": 9.935,
+          "lon": -84.077
+        },
+        {
+          "lat": 9.9395,
+          "lon": -84.07
+        },
+        {
+          "lat": 9.944,
+          "lon": -84.062
+        },
+        {
+          "lat": 9.9468,
+          "lon": -84.054
+        },
+        {
+          "lat": 9.954,
+          "lon": -84.043
+        },
+        {
+          "lat": 9.962,
+          "lon": -84.03
+        },
+        {
+          "lat": 9.968,
+          "lon": -84.018
+        },
+        {
+          "lat": 9.9725,
+          "lon": -84.008
+        }
+      ]
+    },
+    {
+      "routeId": "R142-01",
+      "name": "Ramal Cascajal",
+      "kind": "FEEDER",
+      "corridor": [
+        {
+          "lat": 9.9725,
+          "lon": -84.008
+        },
+        {
+          "lat": 9.976,
+          "lon": -83.99
+        },
+        {
+          "lat": 9.979,
+          "lon": -83.965
+        }
+      ]
+    },
+    {
+      "routeId": "R142-02",
+      "name": "Ramal Las Nubes",
+      "kind": "FEEDER",
+      "corridor": [
+        {
+          "lat": 9.9725,
+          "lon": -84.008
+        },
+        {
+          "lat": 9.985,
+          "lon": -83.995
+        },
+        {
+          "lat": 10.005,
+          "lon": -83.98
+        },
+        {
+          "lat": 10.017,
+          "lon": -83.97
+        }
+      ]
+    },
+    {
+      "routeId": "R142-03",
+      "name": "Ramal Dulce Nombre",
+      "kind": "FEEDER",
+      "corridor": [
+        {
+          "lat": 9.9725,
+          "lon": -84.008
+        },
+        {
+          "lat": 9.976,
+          "lon": -84.0
+        },
+        {
+          "lat": 9.979,
+          "lon": -83.995
+        }
+      ]
+    },
+    {
+      "routeId": "R142-04",
+      "name": "Ramal Patio de Agua",
+      "kind": "FEEDER",
+      "corridor": [
+        {
+          "lat": 9.9725,
+          "lon": -84.008
+        },
+        {
+          "lat": 9.986,
+          "lon": -83.985
+        },
+        {
+          "lat": 9.995,
+          "lon": -83.97
+        }
+      ]
+    },
+    {
+      "routeId": "R142-05",
+      "name": "Ramal San Rafael",
+      "kind": "FEEDER",
+      "corridor": [
+        {
+          "lat": 9.9725,
+          "lon": -84.008
+        },
+        {
+          "lat": 9.977,
+          "lon": -84.017
+        },
+        {
+          "lat": 9.98,
+          "lon": -84.025
+        }
+      ]
+    },
+    {
+      "routeId": "R142-06",
+      "name": "Ramal Patalillo",
+      "kind": "FEEDER",
+      "corridor": [
+        {
+          "lat": 9.9725,
+          "lon": -84.008
+        },
+        {
+          "lat": 9.964,
+          "lon": -84.006
+        },
+        {
+          "lat": 9.956,
+          "lon": -84.001
+        }
+      ]
+    },
+    {
+      "routeId": "R142-07",
+      "name": "Ramal 07 (por definir)",
+      "kind": "FEEDER",
+      "corridor": [
+        {
+          "lat": 9.9725,
+          "lon": -84.008
+        },
+        {
+          "lat": 9.981,
+          "lon": -84.008
+        },
+        {
+          "lat": 9.988,
+          "lon": -84.005
+        }
+      ]
+    },
+    {
+      "routeId": "R142-08",
+      "name": "Ramal 08 (por definir)",
+      "kind": "FEEDER",
+      "corridor": [
+        {
+          "lat": 9.9725,
+          "lon": -84.008
+        },
+        {
+          "lat": 9.968,
+          "lon": -83.998
+        },
+        {
+          "lat": 9.965,
+          "lon": -83.988
+        }
+      ]
+    },
+    {
+      "routeId": "R142-09",
+      "name": "Ramal 09 (por definir)",
+      "kind": "FEEDER",
+      "corridor": [
+        {
+          "lat": 9.9725,
+          "lon": -84.008
+        },
+        {
+          "lat": 9.97,
+          "lon": -84.015
+        },
+        {
+          "lat": 9.965,
+          "lon": -84.02
+        }
+      ]
+    },
+    {
+      "routeId": "R142-10",
+      "name": "Ramal 10 (por definir)",
+      "kind": "FEEDER",
+      "corridor": [
+        {
+          "lat": 9.9725,
+          "lon": -84.008
+        },
+        {
+          "lat": 9.983,
+          "lon": -83.998
+        },
+        {
+          "lat": 9.992,
+          "lon": -83.992
+        }
+      ]
+    }
+  ],
+  "buses": [
+    {
+      "vehicleId": "SJB-16959",
+      "fleetNumber": 1,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-6418",
+      "fleetNumber": 2,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-16926",
+      "fleetNumber": 3,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-10356",
+      "fleetNumber": 4,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-12315",
+      "fleetNumber": 5,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-12726",
+      "fleetNumber": 6,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-9581",
+      "fleetNumber": 7,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-2267",
+      "fleetNumber": 8,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-4209",
+      "fleetNumber": 9,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-10592",
+      "fleetNumber": 10,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-6627",
+      "fleetNumber": 11,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-19768",
+      "fleetNumber": 12,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-19268",
+      "fleetNumber": 13,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-7780",
+      "fleetNumber": 14,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-18600",
+      "fleetNumber": 15,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-2275",
+      "fleetNumber": 16,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-16570",
+      "fleetNumber": 17,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-9182",
+      "fleetNumber": 18,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-4261",
+      "fleetNumber": 19,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-11315",
+      "fleetNumber": 20,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-18065",
+      "fleetNumber": 21,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-11780",
+      "fleetNumber": 22,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-3835",
+      "fleetNumber": 23,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-3154",
+      "fleetNumber": 24,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-16848",
+      "fleetNumber": 25,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-4924",
+      "fleetNumber": 26,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-9808",
+      "fleetNumber": 27,
+      "routeId": "R142",
+      "capacity": 90
+    },
+    {
+      "vehicleId": "SJB-5406",
+      "fleetNumber": 28,
+      "routeId": "R142-01",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-1155",
+      "fleetNumber": 29,
+      "routeId": "R142-01",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-15456",
+      "fleetNumber": 30,
+      "routeId": "R142-02",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-13401",
+      "fleetNumber": 31,
+      "routeId": "R142-02",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-8927",
+      "fleetNumber": 32,
+      "routeId": "R142-03",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-11647",
+      "fleetNumber": 33,
+      "routeId": "R142-03",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-14085",
+      "fleetNumber": 34,
+      "routeId": "R142-04",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-4635",
+      "fleetNumber": 35,
+      "routeId": "R142-04",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-10662",
+      "fleetNumber": 36,
+      "routeId": "R142-05",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-9789",
+      "fleetNumber": 37,
+      "routeId": "R142-05",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-12437",
+      "fleetNumber": 38,
+      "routeId": "R142-06",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-2008",
+      "fleetNumber": 39,
+      "routeId": "R142-06",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-1716",
+      "fleetNumber": 40,
+      "routeId": "R142-07",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-8732",
+      "fleetNumber": 41,
+      "routeId": "R142-08",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-17485",
+      "fleetNumber": 42,
+      "routeId": "R142-09",
+      "capacity": 50
+    },
+    {
+      "vehicleId": "SJB-7090",
+      "fleetNumber": 43,
+      "routeId": "R142-10",
+      "capacity": 50,
+      "outOfService": true
+    }
+  ]
+}

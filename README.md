@@ -1,10 +1,25 @@
-# Bus Passenger Vision — Prueba de concepto (POC)
+# 5GHackthonInnova
+
+Solución del equipo **Proyecto INNOVA** para el Hackatón Centroamericano de Innovación 5G: monitoreo en tiempo real de la ocupación de los buses del GAM.
+
+| Proyecto | Carpeta | Qué hace |
+|---|---|---|
+| Bus Passenger Vision (POC) | `src/TrafficVision.Api`, `src/traffic-vision-web` | Prueba de concepto de visión artificial: detecta y sigue pasajeros en video de cámaras dentro del bus. |
+| Occupancy API | `src/Innova.Occupancy.Api` | Sirve únicamente el resultado procesado de los sensores y el video de cada bus: ocupación, eventos de puerta y posición. Ver [su README](src/Innova.Occupancy.Api/README.md). |
+| Pruebas de la Occupancy API | `tests/Innova.Occupancy.Api.Tests` | Pruebas unitarias y de endpoints (xUnit). |
+
+```powershell
+dotnet build 5GHackthonInnova.sln
+dotnet test 5GHackthonInnova.sln
+```
+
+## Bus Passenger Vision — Prueba de concepto (POC)
 
 Bus Passenger Vision es una **prueba de concepto (POC)** para analizar video de cámaras fijas dentro de un autobús. El objetivo es detectar pasajeros `sitting` y `standing`, mantener su identidad entre fotogramas y contar abordajes y salidas en la cámara orientada hacia la puerta delantera.
 
 > **Referencia institucional:** Promotora Costarricense de Innovación e Investigación.
 
-## Estado actual
+### Estado actual
 
 - Interfaz React + TypeScript adaptada a cámaras internas de autobús.
 - Selector de cámara: frontal para el área de asientos y trasera para la puerta delantera.
@@ -22,7 +37,7 @@ Bus Passenger Vision es una **prueba de concepto (POC)** para analizar video de 
 
 La interfaz no genera resultados de IA simulados. El video `bus_interior_cctv.mp4` fue procesado de extremo a extremo a 1 FPS: 46 muestras en 201.5 segundos en la computadora de desarrollo. Los dos pasajeros primarios conservaron los IDs 1 y 2 durante el clip. Los eventos de puerta están implementados, pero siguen pendientes de validación con un video real orientado hacia la puerta.
 
-## Modelo previsto
+### Modelo previsto
 
 - Proyecto Roboflow: `guillermo-jimenez/bus-passenger-detection`
 - Versión del conjunto de datos: v1
@@ -33,7 +48,7 @@ La interfaz no genera resultados de IA simulados. El video `bus_interior_cctv.mp
 
 El modelo usa `input [1,3,640,640]`, `dets [1,300,4]` y `labels [1,300,3]`, todos `float32`. El parser fue comprobado contra `bus_0010.jpg` y `bus_0043.jpg`; las cajas primarias quedaron dentro de la tolerancia de ±10 px y ±0.05 de confianza.
 
-## Arquitectura
+### Arquitectura
 
 ```text
 Cámara fija del autobús
@@ -56,7 +71,7 @@ El navegador no ejecutará el modelo. ASP.NET Core realizará la inferencia y de
 
 Consulte [docs/architecture.md](docs/architecture.md) para ver los límites de cada capa y la secuencia de hitos.
 
-## Tecnologías
+### Tecnologías
 
 - .NET 10 / ASP.NET Core Web API
 - C#
@@ -68,7 +83,7 @@ Consulte [docs/architecture.md](docs/architecture.md) para ver los límites de c
 
 La aplicación no utiliza Python en tiempo de ejecución. La conversión offline autorizada se realizó con RF-DETR 1.11.0; la API usa C#, ONNX Runtime, OpenCvSharp y SkiaSharp.
 
-## Probar una imagen
+### Probar una imagen
 
 ```powershell
 curl.exe -F "image=@C:\ruta\bus_0010.jpg" `
@@ -77,7 +92,7 @@ curl.exe -F "image=@C:\ruta\bus_0010.jpg" `
 
 La respuesta incluye las cajas `x1/y1/x2/y2`, clase, confianza y `annotatedImageBase64` con el JPG anotado.
 
-## Probar un video
+### Probar un video
 
 ```powershell
 curl.exe -F "video=@C:\ruta\bus_interior_cctv.mp4" `
@@ -89,7 +104,7 @@ curl.exe -F "video=@C:\ruta\bus_interior_cctv.mp4" `
 
 La respuesta `202 Accepted` contiene un `jobId`. Consulte `GET /api/passenger-analysis/video/{jobId}` para leer progreso y resultados, o use `DELETE` sobre la misma ruta para cancelar. El trabajador procesa un video a la vez y elimina el archivo temporal al terminar.
 
-## Ejecutar el backend
+### Ejecutar el backend
 
 ```powershell
 dotnet run --project src/TrafficVision.Api
@@ -97,7 +112,7 @@ dotnet run --project src/TrafficVision.Api
 
 La API de desarrollo escucha en `http://localhost:5169`.
 
-## Ejecutar el frontend
+### Ejecutar el frontend
 
 ```powershell
 cd src/traffic-vision-web
@@ -107,15 +122,15 @@ npm run dev
 
 Abra `http://localhost:5173`. Vite redirige `/api` hacia ASP.NET Core.
 
-## Compilar
+### Compilar
 
 ```powershell
-dotnet build TrafficVision.sln
+dotnet build 5GHackthonInnova.sln
 cd src/traffic-vision-web
 npm run build
 ```
 
-## Hitos de visión
+### Hitos de visión
 
 1. ✅ Inspeccionar el ONNX y ejecutar una imagen fija en C#, produciendo JPG anotado y JSON.
 2. ✅ Decodificar y procesar video a una tasa configurable de 1–15 FPS.
@@ -125,7 +140,7 @@ npm run build
 
 La cantidad de pasajeros únicos todavía es sensible a falsos positivos y fragmentación de tracks. Debe considerarse una métrica experimental hasta reentrenar el modelo con video real del autobús y validar el tracker.
 
-## Archivos del modelo y pruebas
+### Archivos del modelo y pruebas
 
 El modelo debe colocarse en `models/bus-passengers-rfdetr-s-v1.onnx`. Los modelos, videos y salidas generadas están excluidos de Git.
 
@@ -136,7 +151,7 @@ Los recursos previstos son:
 - `bus_stop_cctv.mp4`: prueba posterior fuera del autobús.
 - `frames/bus_0010.jpg` y `frames/bus_0043.jpg`: fotogramas dorados validados para M1.
 
-## Atribución
+### Atribución
 
 - Video interior del autobús por **dae jeung kim**, Pixabay, video 142755: https://pixabay.com/users/kimdaejeung-7703165/
 - Video de parada de autobús por **Expatsiam**, Pixabay, video 31967: https://pixabay.com/users/expatsiam-1490930/
