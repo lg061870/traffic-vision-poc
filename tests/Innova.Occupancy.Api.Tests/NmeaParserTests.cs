@@ -39,6 +39,34 @@ public sealed class NmeaParserTests
         Assert.Equal(18.5, fix.SpeedKmh);
     }
 
+    [Fact]
+    public void Reads_the_rmc_course_as_heading_only_while_moving()
+    {
+        Assert.True(NmeaParser.TryParse(Sentence("GPRMC,001510.00,A,0956.7918,N,08403.2106,W,12.0,231.4,011026,,,A"), MessageTime, out var moving));
+        Assert.True(NmeaParser.TryParse(Sentence("GPRMC,001510.00,A,0956.7918,N,08403.2106,W,0.3,87.5,011026,,,A"), MessageTime, out var stopped));
+        Assert.True(NmeaParser.TryParse(Sentence("GPRMC,001510.00,A,0956.7918,N,08403.2106,W,12.0,,011026,,,A"), MessageTime, out var noCourse));
+        Assert.True(NmeaParser.TryParse(
+            "$GPGGA,001510.00,0956.7918,N,08403.2106,W,1,09,0.9,1191.0,M,,M,,*5A", MessageTime, out var gga));
+
+        Assert.Equal(231.4, moving.HeadingDeg);
+        Assert.Null(stopped.HeadingDeg);
+        Assert.Null(noCourse.HeadingDeg);
+        Assert.Null(gga.HeadingDeg);
+    }
+
+    [Fact]
+    public void Rmc_wins_over_gga_at_the_same_instant()
+    {
+        var (fixes, _) = NmeaParser.Parse(
+        [
+            Sentence("GPRMC,001510.00,A,0956.7918,N,08403.2106,W,12.0,231.4,011026,,,A"),
+            "$GPGGA,001510.00,0956.7918,N,08403.2106,W,1,09,0.9,1191.0,M,,M,,*5A"
+        ], MessageTime);
+
+        Assert.Equal(22.2, fixes[^1].SpeedKmh);
+        Assert.Equal(231.4, fixes[^1].HeadingDeg);
+    }
+
     [Theory]
     [InlineData("$GPRMC,001510.00,A,0956.7918,N,08403.2106,W,0.0,87.5,011026,,,A*71")] // wrong checksum
     [InlineData("GPRMC,001510.00,A,0956.7918,N,08403.2106,W,0.0,87.5,011026,,,A*70")] // no $

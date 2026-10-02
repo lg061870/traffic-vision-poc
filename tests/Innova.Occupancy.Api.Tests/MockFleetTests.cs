@@ -1,3 +1,4 @@
+using Innova.Occupancy.Api.Models;
 using Innova.Occupancy.Api.Vehicles;
 using Innova.Occupancy.Api.Vehicles.Simulation;
 using Xunit.Abstractions;
@@ -20,6 +21,28 @@ public sealed class MockFleetTests(ITestOutputHelper output)
         Assert.Equal(16, fleet.Buses.Count(bus => bus.RouteId != "R142"));
         Assert.Equal(10, fleet.Routes.Count(route => route.Kind == MockRouteKind.Feeder));
         Assert.All(fleet.Buses, bus => Assert.True(VehicleId.TryNormalize(bus.VehicleId, out var id) && id == bus.VehicleId));
+    }
+
+    [Fact]
+    public void Simulated_heading_follows_the_street_and_is_empty_when_stopped()
+    {
+        // A street running due north; the bus starts near the south end heading north.
+        GeoLocation[] corridor = [new(9.90, -84.0), new(9.95, -84.0)];
+        var bus = new SimulatedBus("SJB-0001", 90, MockRouteKind.Trunk, corridor, 0.1, 1, 0, 0, new Random(1));
+        var noon = Midnight.AddHours(12);
+
+        var moving = bus.Step(noon, TimeSpan.FromSeconds(5), new Random(1)).Location!;
+        Assert.True(moving.SpeedKmh > 0);
+        Assert.Equal(0, moving.HeadingDeg);
+
+        var southbound = new SimulatedBus("SJB-0002", 90, MockRouteKind.Trunk, corridor, 0.9, -1, 0, 0, new Random(1));
+        Assert.Equal(180, southbound.Step(noon, TimeSpan.FromSeconds(5), new Random(1)).Location!.HeadingDeg);
+
+        // Run until the bus stops; a stopped bus has no heading.
+        var stopped = Enumerable.Range(1, 200)
+            .Select(i => bus.Step(noon.AddSeconds(5 * i), TimeSpan.FromSeconds(5), new Random(i)).Location!)
+            .First(location => location.SpeedKmh == 0);
+        Assert.Null(stopped.HeadingDeg);
     }
 
     [Fact]

@@ -64,6 +64,17 @@ public sealed class VehiclesApiTests
     }
 
     [Fact]
+    public async Task Heading_outside_0_to_360_is_400()
+    {
+        using var client = CreateClient();
+
+        var response = await PostAsync(client, "SJB-8754",
+            ValidObservation.Replace("\"speedKmh\": 22", "\"speedKmh\": 22, \"headingDeg\": 360"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Configured_device_key_is_required()
     {
         using var client = CreateClient(("Ingestion:DeviceKeys:SJB-8754", "secret-key"));

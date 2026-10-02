@@ -124,7 +124,7 @@ public sealed class SimulatedBus
 
         return new VehicleObservation(
             now,
-            Position() with { SpeedKmh = speedKmh },
+            Position() with { SpeedKmh = speedKmh, HeadingDeg = speedKmh > 0 ? Heading() : null },
             new OccupancyReading(Passengers, _capacity, SensorSource.Simulated),
             doorEvent is null ? null : [doorEvent],
             new DeviceStatusReport(true, "sim-2.0"));
@@ -149,6 +149,33 @@ public sealed class SimulatedBus
         }
 
         return _corridor[0];
+    }
+
+    /// <summary>Direction of travel along the current street segment, in degrees from north.</summary>
+    public double Heading()
+    {
+        var index = SegmentIndex();
+        var (from, to) = _direction > 0 ? (_corridor[index], _corridor[index + 1]) : (_corridor[index + 1], _corridor[index]);
+        var meanLat = (from.Lat + to.Lat) / 2 * Math.PI / 180;
+        var east = (to.Lon - from.Lon) * Math.Cos(meanLat);
+        var north = to.Lat - from.Lat;
+        return Math.Round(((Math.Atan2(east, north) * 180 / Math.PI) + 360) % 360, 1) % 360;
+    }
+
+    private int SegmentIndex()
+    {
+        var remaining = _metersAlong;
+        for (var index = 0; index < _segmentMeters.Length - 1; index++)
+        {
+            if (remaining <= _segmentMeters[index])
+            {
+                return index;
+            }
+
+            remaining -= _segmentMeters[index];
+        }
+
+        return _segmentMeters.Length - 1;
     }
 
     /// <summary>Share of the fleet in service: everyone at rush hour, about half otherwise, none at night.</summary>

@@ -83,7 +83,7 @@ public sealed class RawAggregator(VehicleStateStore store, TimeProvider time)
 
             store.Apply(vehicleId, new VehicleObservation(
                 timestamp,
-                latestFix is null ? null : new GeoLocation(latestFix.Lat, latestFix.Lon, latestFix.SpeedKmh),
+                latestFix is null ? null : new GeoLocation(latestFix.Lat, latestFix.Lon, latestFix.SpeedKmh, latestFix.HeadingDeg),
                 state.PassengerCount is { } count && state.HasAnyCount(vision)
                     ? new OccupancyReading(count, capacity, source)
                     : null,
