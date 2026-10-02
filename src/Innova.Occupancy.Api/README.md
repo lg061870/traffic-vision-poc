@@ -4,15 +4,15 @@ Sirve **solo el resultado** del procesamiento de sensores y video de cada bus: o
 
 Por ahora todo se guarda **en memoria** (se pierde al reiniciar). Un simulador (`MockFleet`) genera buses que se mueven y cambian de ocupación para que la app móvil y el dashboard puedan desarrollarse antes de que existan dispositivos reales.
 
-> **Ver la API en acción:** con la API corriendo, abra el **[simulador de cliente](http://localhost:5189/simulate)** (`http://localhost:5189/simulate`). Hace las mismas llamadas que haría su app y muestra cada respuesta, la más reciente arriba. Permite elegir un bus.
+> **Ver la API en acción:** abra el **[simulador de cliente](https://lg0618pp-002-site2.htempurl.com/simulate)** (`https://lg0618pp-002-site2.htempurl.com/simulate`). Hace las mismas llamadas que haría su app y muestra cada respuesta, la más reciente arriba. Permite elegir un bus.
 
 **Contenido:** [Guía para apps cliente](#guía-para-apps-cliente) · [Ejecutar](#ejecutar) · [Endpoints](#endpoints) · [Convenciones](#convenciones) · [Datos crudos](#datos-crudos-post-raw) · [Configuración](#configuración) · [Flota simulada](#flota-simulada-autobuses-unidos-de-coronado)
 
 ## Guía para apps cliente
 
-Esta sección es para quien construye una app que **muestra** la ocupación de los buses: app móvil, dashboard de operadores u otra API. Una app cliente solo **lee**; nunca envía datos.
+Para quien construye una app que **muestra** la ocupación de los buses (app móvil, dashboard u otra API). Una app cliente solo **lee**; nunca envía datos.
 
-### 1. Dónde encaja
+### 1. Cómo funciona
 
 ```mermaid
 flowchart LR
@@ -26,21 +26,12 @@ flowchart LR
     R["API de rutas y paradas<br/>(otro servicio)"] -.-> M
 ```
 
-- La Occupancy API responde **dónde está cada bus, cuánta gente lleva y quién subió o bajó**.
-- **No** sirve rutas, paradas, horarios ni tarifas. Si su app los necesita, vienen de otra API; únalos por `vehicleId` (la placa).
-- Los datos se actualizan cada 5–10 s por bus. Consultar más seguido no da datos más nuevos.
+- La API responde **dónde está cada bus, cuánta gente lleva y quién subió o bajó**. No sirve rutas, paradas ni horarios.
+- Los datos de cada bus se actualizan cada 5–10 s.
+- **URL base:** `https://lg0618pp-002-site2.htempurl.com` (sitio de demostración, temporal), o `http://localhost:5189` si corre la API en su computadora. Póngala en la configuración de su app.
+- **Sin llave** para leer, respuestas en **JSON**, horas en **UTC**. Una app web puede llamarla directo desde el navegador (CORS abierto para `GET`).
 
-### 2. Integrarla en su app
-
-1. **URL base.** En desarrollo: `http://localhost:5189`. Póngala en la configuración de su app, no en el código, porque cambiará al desplegar.
-2. **Sin autenticación para leer.** Los `GET` no necesitan llave. CORS permite `GET` desde cualquier origen, así que una app web puede llamar directo desde el navegador.
-3. **JSON** en UTF-8. Las horas vienen en ISO-8601 UTC (`2026-10-02T04:55:24.33+00:00`); conviértalas a la hora local para mostrarlas.
-4. **Tipos.** El contrato está en `http://localhost:5189/openapi/v1.json`. **Atención:** ese documento declara `status` y `source` como enteros y los números como `integer | string`, pero la API envía nombres (`"FEW_SEATS_AVAILABLE"`) y números normales. Si genera tipos, corríjalos o escríbalos a mano como en [`src/occupancy-reference-web/src/types/occupancy.ts`](../occupancy-reference-web/src/types/occupancy.ts).
-5. **Ejemplo funcionando:** la [app web de referencia](../occupancy-reference-web/README.md) (React + TypeScript) hace todo lo de esta guía: mapa, lista, detalle, historial y eventos.
-
-### 3. El flujo de llamadas
-
-Una app típica tiene dos momentos: la **vista de flota** (mapa o lista de todos los buses) y el **detalle de un bus** (cuando el usuario toca uno).
+Una app típica tiene dos pantallas: la **flota** (mapa o lista) y el **detalle de un bus**.
 
 ```mermaid
 sequenceDiagram
@@ -48,168 +39,119 @@ sequenceDiagram
     participant App as App cliente
     participant API as Occupancy API
 
-    Note over App,API: Vista de flota
+    Note over App,API: Pantalla de flota
     loop cada 5–10 s
         App->>API: GET /api/v1/vehicles
-        API-->>App: 200 { vehicles: [...] }
-        App->>App: mover marcadores, colorear por status, gris si stale
+        API-->>App: todos los buses
     end
 
-    Note over App,API: El usuario abre el bus SJB-15456
-    App->>API: GET /api/v1/vehicles/SJB-15456/history?interval=5m
-    API-->>App: 200 { points: [...] } (última hora)
-    App->>API: GET /api/v1/vehicles/SJB-15456/events?since=(hace 1 h)
-    API-->>App: 200 { events: [...] }
+    Note over App,API: El usuario abre el bus SJB-16959
     loop cada 15–30 s mientras el detalle está abierto
-        App->>API: GET .../history y .../events?since=(último closedAt)
-        API-->>App: datos nuevos
+        App->>API: GET /api/v1/vehicles/SJB-16959/history
+        API-->>App: ocupación de la última hora
+        App->>API: GET /api/v1/vehicles/SJB-16959/events?since=…
+        API-->>App: quién subió y bajó
     end
-    Note over App: Al cerrar el detalle, deje de consultar history y events
 ```
 
 | Pantalla | Llamada | Cada cuánto |
 |---|---|---|
-| Mapa o lista de flota | `GET /api/v1/vehicles` | 5–10 s |
-| Un solo bus (por ejemplo, "mi bus") sin la flota | `GET /api/v1/vehicles/{vehicleId}` | 5–10 s |
-| Gráfico de ocupación de un bus | `GET /api/v1/vehicles/{vehicleId}/history` | 15–60 s, solo con el detalle abierto |
-| Abordajes y salidas de un bus | `GET /api/v1/vehicles/{vehicleId}/events?since=` | 15–30 s, solo con el detalle abierto |
+| Mapa o lista de buses | `GET /api/v1/vehicles` | 5–10 s |
+| Un solo bus, sin la flota | `GET /api/v1/vehicles/{placa}` | 5–10 s |
+| Gráfico de ocupación de un bus | `GET /api/v1/vehicles/{placa}/history` | 15–60 s, solo con el detalle abierto |
+| Subidas y bajadas de un bus | `GET /api/v1/vehicles/{placa}/events?since=` | 15–30 s, solo con el detalle abierto |
 
-Reglas prácticas:
+Para ver estas llamadas en vivo, abra el [simulador de cliente](https://lg0618pp-002-site2.htempurl.com/simulate).
 
-- **No solape peticiones.** Programe la siguiente consulta cuando llegue la respuesta (`setTimeout` después de responder, no `setInterval`).
-- **Si una consulta falla, conserve los últimos datos** y muestre un aviso; no vacíe la pantalla.
-- **Pause las consultas** cuando la app pasa a segundo plano.
+### 2. Conectarse desde una app de Visual Studio (C#)
 
-### 4. Cada llamada, con ejemplos
+Esta sección es para apps hechas en **Visual Studio** con .NET: **.NET MAUI** (móvil), Blazor, WPF o consola. No hace falta instalar ningún paquete NuGet: `HttpClient` y `System.Net.Http.Json` vienen con .NET.
 
-#### `GET /api/v1/vehicles`: todos los buses
+1. **Cree el proyecto.** Para móvil, elija la plantilla **.NET MAUI App**.
+2. **Guarde la dirección de la API en un solo lugar:**
+   ```csharp
+   public static class OccupancyApi
+   {
+       public static readonly HttpClient Http = new() { BaseAddress = new Uri("https://lg0618pp-002-site2.htempurl.com") };
+   }
+   ```
+   Use **https**: Android e iOS bloquean `http` por defecto, y con https no hay que configurar nada.
+3. **Copie los tipos** (los `record` al final del ejemplo de abajo) en un archivo, por ejemplo `Models.cs`. Reflejan el JSON de la API.
+4. **Llámela** donde cargue los datos, por ejemplo en una página. Agregue `using System.Net.Http.Json;` arriba:
+   ```csharp
+   var fleet = await OccupancyApi.Http.GetFromJsonAsync<VehicleList>("/api/v1/vehicles");
+   ```
+   En MAUI, después del `await` el código sigue en el hilo de la pantalla, así que puede actualizar los controles directamente.
+5. **Actualice cada 5–10 s** con un `PeriodicTimer`, como en el ejemplo. Deténgalo cuando el usuario sale de la página y envuelva la llamada en `try/catch` para conservar los últimos datos si falla la red.
 
-```bash
-curl http://localhost:5189/api/v1/vehicles
-```
+Bueno saber:
 
-```json
+- La primera llamada después de un rato sin uso puede tardar varios segundos mientras el servidor arranca la API; las siguientes tardan menos de un segundo.
+- Si alguna vez prueba contra la API en su propia computadora desde el emulador de Android, la dirección es `http://10.0.2.2:5189`, no `localhost`.
+- Para un mapa en MAUI existe `Microsoft.Maui.Controls.Maps`; en Android necesita una llave de Google Maps.
+- **Probar sin escribir código:** abra [`Innova.Occupancy.Api.http`](Innova.Occupancy.Api.http) en Visual Studio, cambie la primera línea por `@host = https://lg0618pp-002-site2.htempurl.com` y haga clic en **Send request** sobre cualquier `GET`.
+- Si genera el cliente desde `openapi/v1.json` (Connected Services, NSwag), revise `status` y `source`: el documento los declara como números, pero la API envía texto (`"MANY_SEATS_AVAILABLE"`). Los `record` de abajo ya los tratan como `string`.
+
+Ejemplo completo (funciona tal cual en una app de consola):
+
+```csharp
+using System.Net.Http.Json;
+
+var api = new HttpClient { BaseAddress = new Uri("https://lg0618pp-002-site2.htempurl.com") };
+
+// 1. Todos los buses
+var fleet = await api.GetFromJsonAsync<VehicleList>("/api/v1/vehicles");
+foreach (var bus in fleet!.Vehicles)
 {
-  "vehicles": [
+    Console.WriteLine($"{bus.VehicleId}: {bus.Occupancy?.PassengerCount}/{bus.Occupancy?.Capacity} " +
+                      $"{bus.Occupancy?.Status} en ({bus.Location?.Lat}, {bus.Location?.Lon})");
+}
+
+// 2. Un bus: historial y eventos de la última hora
+var history = await api.GetFromJsonAsync<OccupancyHistory>("/api/v1/vehicles/SJB-16959/history?interval=5m");
+var since = Uri.EscapeDataString(DateTimeOffset.UtcNow.AddHours(-1).ToString("O"));
+var events = await api.GetFromJsonAsync<VehicleEventList>($"/api/v1/vehicles/SJB-16959/events?since={since}");
+Console.WriteLine($"{history!.Points.Count} puntos de historial, {events!.Events.Count} eventos de puerta");
+
+// 3. Consultar la flota cada 5 s (en una app, actualice la pantalla en lugar de escribir en consola)
+using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+while (await timer.WaitForNextTickAsync())
+{
+    try
     {
-      "vehicleId": "SJB-10356",
-      "asOf": "2026-10-01T20:52:03.91+00:00",
-      "stale": false,
-      "location": { "lat": 9.958059, "lon": -84.039263, "speedKmh": 21, "headingDeg": 215 },
-      "occupancy": {
-        "passengerCount": 12,
-        "capacity": 90,
-        "percent": 13,
-        "status": "MANY_SEATS_AVAILABLE",
-        "source": "SIMULATED",
-        "measuredAt": "2026-10-01T20:52:03.91+00:00"
-      },
-      "device": { "online": true, "lastSeen": "2026-10-01T20:52:03.91+00:00", "cameraOnline": true, "firmware": "sim-2.0" }
+        fleet = await api.GetFromJsonAsync<VehicleList>("/api/v1/vehicles");
+        Console.WriteLine($"{DateTime.Now:T}: {fleet!.Vehicles.Count} buses");
     }
-  ]
-}
-```
-
-`location` y `occupancy` pueden ser `null` si el bus todavía no envió ese dato. `headingDeg` es `null` cuando el bus está detenido.
-
-#### `GET /api/v1/vehicles/{vehicleId}`: un bus
-
-```bash
-curl http://localhost:5189/api/v1/vehicles/SJB-10356
-```
-
-Devuelve un solo objeto con la misma forma que cada elemento de `vehicles`. La placa se normaliza: `sjb 10356`, `SJB_10356` y `SJB-10356` son el mismo bus. Un bus que nunca reportó da **404**.
-
-#### `GET /api/v1/vehicles/{vehicleId}/history`: ocupación en el tiempo
-
-| Parámetro | Por defecto | Notas |
-|---|---|---|
-| `from` | `to` menos 1 hora | ISO-8601 |
-| `to` | ahora | ISO-8601 |
-| `interval` | `5m` | número + `s`, `m` o `h`; mínimo `10s`. Rango máximo: 7 días |
-
-```bash
-curl "http://localhost:5189/api/v1/vehicles/SJB-10356/history?interval=5m"
-```
-
-```json
-{
-  "vehicleId": "SJB-10356",
-  "from": "2026-10-01T19:52:13.25+00:00",
-  "to": "2026-10-01T20:52:13.25+00:00",
-  "interval": "5m",
-  "points": [
-    { "time": "2026-10-01T19:52:13.25+00:00", "passengerCount": 20, "peakPassengerCount": 23, "capacity": 90, "percent": 22 },
-    { "time": "2026-10-01T19:57:13.25+00:00", "passengerCount": 10, "peakPassengerCount": 20, "capacity": 90, "percent": 11 }
-  ]
-}
-```
-
-`passengerCount` es el último valor del intervalo y `peakPassengerCount` el máximo. Para un gráfico, dibuje `passengerCount` como línea y `peakPassengerCount` como banda.
-
-#### `GET /api/v1/vehicles/{vehicleId}/events?since=`: abordajes y salidas
-
-```bash
-curl "http://localhost:5189/api/v1/vehicles/SJB-10356/events?since=2026-10-01T19:52:00Z"
-```
-
-```json
-{
-  "vehicleId": "SJB-10356",
-  "events": [
+    catch (HttpRequestException error)
     {
-      "door": 1,
-      "boardings": 1,
-      "alightings": 3,
-      "location": { "lat": 9.939451, "lon": -84.065842, "speedKmh": 0 },
-      "openedAt": "2026-10-01T19:54:28.04+00:00",
-      "closedAt": "2026-10-01T19:54:48.04+00:00",
-      "occupancyAfter": 20
+        Console.WriteLine($"Sin conexión, se conservan los últimos datos: {error.Message}");
     }
-  ]
 }
+
+// Tipos que reflejan el JSON de la API
+public record VehicleList(List<VehicleState> Vehicles);
+public record VehicleState(string VehicleId, DateTimeOffset AsOf, bool Stale,
+    GeoLocation? Location, OccupancySnapshot? Occupancy, DeviceHealth Device);
+public record GeoLocation(double Lat, double Lon, double? SpeedKmh, double? HeadingDeg);
+public record OccupancySnapshot(int PassengerCount, int Capacity, int Percent,
+    string Status, string Source, DateTimeOffset MeasuredAt);
+public record DeviceHealth(bool Online, DateTimeOffset LastSeen, bool? CameraOnline, string? Firmware);
+public record OccupancyHistory(string VehicleId, DateTimeOffset From, DateTimeOffset To, string Interval,
+    List<HistoryPoint> Points);
+public record HistoryPoint(DateTimeOffset Time, int PassengerCount, int PeakPassengerCount, int Capacity, int Percent);
+public record VehicleEventList(string VehicleId, List<DoorEvent> Events);
+public record DoorEvent(int Door, int Boardings, int Alightings, GeoLocation? Location,
+    DateTimeOffset OpenedAt, DateTimeOffset ClosedAt, int? OccupancyAfter);
 ```
 
-Los eventos vienen del más viejo al más nuevo. **Envíe siempre `since`:** sin él, la API devuelve todos los eventos guardados del bus. Para consultar solo lo nuevo, use como `since` el `closedAt` del último evento recibido.
+### 3. Conectarse desde React o TypeScript
 
-### 5. Mostrar los datos
-
-| `status` | Significado | Color sugerido |
-|---|---|---|
-| `EMPTY` | Vacío | verde |
-| `MANY_SEATS_AVAILABLE` | Muchos asientos | verde claro |
-| `FEW_SEATS_AVAILABLE` | Pocos asientos | amarillo |
-| `STANDING_ROOM_ONLY` | Solo de pie | naranja |
-| `CRUSHED_STANDING_ROOM_ONLY` | Muy lleno | rojo |
-| `FULL` | Lleno | rojo oscuro |
-
-- **`stale: true`**: el bus no reporta hace más de 60 s. Muéstrelo en gris y sin flecha de dirección; su posición y ocupación ya no son actuales.
-- **"Hace x s"**: calcúlelo con `device.lastSeen`.
-- **Dirección**: `headingDeg` en grados desde el norte, en sentido horario (`0` = norte, `90` = este). Rote el ícono o una flecha; si es `null`, el bus está detenido o no hay rumbo.
-- **`source`**: de dónde salió el número (`DOOR_COUNTER_3D`, `CABIN_CAMERA`, `DOOR_CAMERA`, `SIMULATED`). Útil en un dashboard para saber qué tan confiable es.
-- **`percent`** ya viene calculado (`passengerCount / capacity`). Puede pasar de 100 en un bus sobrecargado.
-
-### 6. Errores
-
-Los errores vienen en formato [Problem Details](https://www.rfc-editor.org/rfc/rfc9457); `title` explica qué pasó y se puede mostrar o registrar:
-
-```json
-{ "type": "https://tools.ietf.org/html/rfc9110#section-15.5.5", "title": "Bus XXX-0000 has not reported any data.", "status": 404 }
-```
-
-| Código | Cuándo | Qué hacer |
-|---|---|---|
-| 200 | Todo bien | |
-| 400 | Parámetro inválido, por ejemplo `interval=5s` (mínimo `10s`) | Corregir la llamada |
-| 404 | El bus nunca reportó | Mostrar "sin datos"; no reintentar en bucle |
-| sin respuesta / 5xx | API caída o red | Conservar los últimos datos, avisar y reintentar en el siguiente ciclo |
-
-### 7. Ejemplo completo (TypeScript)
+Para apps web (React, Angular, Vue) o React Native. El navegador puede llamar a la API directamente: CORS permite `GET` desde cualquier origen.
 
 Consulta la flota cada 5 s sin solapar peticiones y conserva los últimos datos si falla:
 
 ```ts
-const API = 'http://localhost:5189' // desde la configuración de su app
+const API = 'https://lg0618pp-002-site2.htempurl.com' // desde la configuración de su app
 
 type OccupancyStatus =
   | 'EMPTY' | 'MANY_SEATS_AVAILABLE' | 'FEW_SEATS_AVAILABLE'
@@ -241,31 +183,138 @@ function pollFleet(onData: (vehicles: VehicleState[]) => void, onError: (message
     } catch (error) {
       onError((error as Error).message) // la pantalla conserva los datos anteriores
     }
-    if (!stopped) setTimeout(tick, 5000)
+    if (!stopped) setTimeout(tick, 5000) // la siguiente consulta, solo después de la respuesta
   }
   tick()
   return () => { stopped = true } // llamar al salir de la pantalla
 }
 
-// Detalle de un bus: historial de la última hora y eventos de la última hora.
-const busId = encodeURIComponent('SJB-10356')
+// Detalle de un bus: historial y eventos de la última hora.
+const busId = encodeURIComponent('SJB-16959')
 const history = await getJson(`/api/v1/vehicles/${busId}/history?interval=5m`)
 const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
 const events = await getJson(`/api/v1/vehicles/${busId}/events?since=${encodeURIComponent(since)}`)
 ```
 
-Cualquier cliente HTTP sirve (Kotlin, Swift, Flutter, C#): son `GET` simples que devuelven JSON.
+### 4. Probar con curl: cada llamada, con ejemplos
 
-### Lista de verificación
+```bash
+# Todos los buses
+curl https://lg0618pp-002-site2.htempurl.com/api/v1/vehicles
 
-- [ ] La URL base viene de configuración.
-- [ ] La flota se consulta cada 5–10 s, sin peticiones solapadas.
-- [ ] `history` y `events` solo se consultan con el detalle abierto, y `events` siempre con `since`.
-- [ ] Los buses `stale` se muestran en gris.
-- [ ] `location`, `occupancy` y `headingDeg` pueden ser `null`.
-- [ ] Un error conserva los últimos datos y muestra un aviso.
-- [ ] Las horas se muestran en hora local.
-- [ ] Probado contra el [simulador de cliente](http://localhost:5189/simulate) y la flota simulada.
+# Un bus (la placa puede ir en minúsculas o con espacio: sjb 16959)
+curl https://lg0618pp-002-site2.htempurl.com/api/v1/vehicles/SJB-16959
+
+# Ocupación de la última hora, en intervalos de 5 minutos
+curl "https://lg0618pp-002-site2.htempurl.com/api/v1/vehicles/SJB-16959/history?interval=5m"
+
+# Subidas y bajadas desde una hora dada (envíe siempre since)
+curl "https://lg0618pp-002-site2.htempurl.com/api/v1/vehicles/SJB-16959/events?since=2026-10-01T19:52:00Z"
+```
+
+Así responde `GET /api/v1/vehicles` (un bus de la lista):
+
+```json
+{
+  "vehicles": [
+    {
+      "vehicleId": "SJB-10356",
+      "asOf": "2026-10-01T20:52:03.91+00:00",
+      "stale": false,
+      "location": { "lat": 9.958059, "lon": -84.039263, "speedKmh": 21, "headingDeg": 215 },
+      "occupancy": {
+        "passengerCount": 12, "capacity": 90, "percent": 13,
+        "status": "MANY_SEATS_AVAILABLE", "source": "SIMULATED",
+        "measuredAt": "2026-10-01T20:52:03.91+00:00"
+      },
+      "device": { "online": true, "lastSeen": "2026-10-01T20:52:03.91+00:00", "cameraOnline": true, "firmware": "sim-2.0" }
+    }
+  ]
+}
+```
+
+### 5. Campos de cada endpoint
+
+#### `GET /api/v1/vehicles` y `GET /api/v1/vehicles/{placa}`
+
+`/vehicles` devuelve `{ "vehicles": [ … ] }`; `/vehicles/{placa}` devuelve un solo bus. Cada bus tiene:
+
+| Campo | Tipo | Qué es |
+|---|---|---|
+| `vehicleId` | texto | Placa del bus, por ejemplo `SJB-10356` |
+| `asOf` | fecha y hora | Hora del último dato recibido |
+| `stale` | sí/no | `true` si el bus no reporta hace más de 60 s: muéstrelo en gris |
+| `location.lat` | número | Latitud GPS |
+| `location.lon` | número | Longitud GPS |
+| `location.speedKmh` | número o vacío | Velocidad en km/h |
+| `location.headingDeg` | número o vacío | Dirección de avance: 0 = norte, 90 = este, 180 = sur, 270 = oeste. Vacío si está detenido |
+| `occupancy.passengerCount` | entero | Pasajeros a bordo |
+| `occupancy.capacity` | entero | Capacidad del bus |
+| `occupancy.percent` | entero | Porcentaje de ocupación (puede pasar de 100) |
+| `occupancy.status` | texto | Nivel de ocupación (tabla de abajo) |
+| `occupancy.source` | texto | De dónde viene el número: `DOOR_COUNTER_3D`, `CABIN_CAMERA`, `DOOR_CAMERA` o `SIMULATED` |
+| `occupancy.measuredAt` | fecha y hora | Cuándo se midió |
+| `device.online` | sí/no | Si el equipo del bus está conectado |
+| `device.lastSeen` | fecha y hora | Último contacto del equipo; úselo para "hace x s" |
+| `device.cameraOnline` | sí/no o vacío | Si la cámara funciona |
+| `device.firmware` | texto o vacío | Versión del software del equipo |
+
+`location` y `occupancy` pueden venir vacíos (`null`) si el bus todavía no envió ese dato.
+
+| `status` | Significado | Color sugerido |
+|---|---|---|
+| `EMPTY` | Vacío | verde |
+| `MANY_SEATS_AVAILABLE` | Muchos asientos | verde claro |
+| `FEW_SEATS_AVAILABLE` | Pocos asientos | amarillo |
+| `STANDING_ROOM_ONLY` | Solo de pie | naranja |
+| `CRUSHED_STANDING_ROOM_ONLY` | Muy lleno | rojo |
+| `FULL` | Lleno | rojo oscuro |
+
+#### `GET /api/v1/vehicles/{placa}/history`
+
+| Parámetro | Por defecto | Qué es |
+|---|---|---|
+| `from` | una hora antes de `to` | Inicio, en ISO-8601 |
+| `to` | ahora | Fin, en ISO-8601 |
+| `interval` | `5m` | Tamaño de cada intervalo: número + `s`, `m` o `h`. Mínimo `10s`; rango máximo 7 días |
+
+Devuelve `vehicleId`, `from`, `to`, `interval` y una lista `points`, uno por intervalo:
+
+| Campo | Tipo | Qué es |
+|---|---|---|
+| `time` | fecha y hora | Inicio del intervalo |
+| `passengerCount` | entero | Pasajeros al final del intervalo |
+| `peakPassengerCount` | entero | Máximo de pasajeros en el intervalo |
+| `capacity` | entero | Capacidad del bus |
+| `percent` | entero | Porcentaje de ocupación |
+
+#### `GET /api/v1/vehicles/{placa}/events?since=`
+
+| Parámetro | Por defecto | Qué es |
+|---|---|---|
+| `since` | ninguno: devuelve todo lo guardado | Solo eventos cerrados después de esta hora (ISO-8601). Envíelo siempre; para traer solo lo nuevo, use el `closedAt` del último evento |
+
+Devuelve `vehicleId` y una lista `events`, del más viejo al más nuevo:
+
+| Campo | Tipo | Qué es |
+|---|---|---|
+| `door` | entero | Número de puerta |
+| `boardings` | entero | Personas que subieron |
+| `alightings` | entero | Personas que bajaron |
+| `location` | lat, lon o vacío | Dónde estaba el bus |
+| `openedAt` | fecha y hora | Cuándo se abrió la puerta |
+| `closedAt` | fecha y hora | Cuándo se cerró |
+| `occupancyAfter` | entero o vacío | Pasajeros a bordo al cerrar la puerta |
+
+#### Errores
+
+Vienen en formato [Problem Details](https://www.rfc-editor.org/rfc/rfc9457); el campo `title` explica qué pasó.
+
+| Código | Cuándo | Qué hacer |
+|---|---|---|
+| 400 | Parámetro inválido, por ejemplo `interval=5s` | Corregir la llamada |
+| 404 | La placa no existe o nunca reportó | Mostrar "sin datos" |
+| sin respuesta / 5xx | API caída o sin red | Conservar los últimos datos, avisar y reintentar |
 
 ## Ejecutar
 
