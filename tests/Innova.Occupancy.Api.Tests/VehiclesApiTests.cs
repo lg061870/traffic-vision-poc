@@ -75,6 +75,20 @@ public sealed class VehiclesApiTests
     }
 
     [Fact]
+    public async Task Client_demo_page_is_served_in_development_and_can_be_turned_off()
+    {
+        using var client = CreateClient(("environment", "Development"));
+        using var disabled = CreateClient(("environment", "Development"), ("ClientDemo:Enabled", "false"));
+
+        var page = await client.GetAsync("/simulate");
+
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Equal("text/html", page.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("Simulador de cliente", await page.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.NotFound, (await disabled.GetAsync("/simulate")).StatusCode);
+    }
+
+    [Fact]
     public async Task Configured_device_key_is_required()
     {
         using var client = CreateClient(("Ingestion:DeviceKeys:SJB-8754", "secret-key"));

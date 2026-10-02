@@ -13,6 +13,7 @@ dotnet run --project src/Innova.Occupancy.Api
 - API: `http://localhost:5189/api/v1/vehicles`
 - Contrato OpenAPI (para generar tipos en la app): `http://localhost:5189/openapi/v1.json`
 - Ejemplos listos: `Innova.Occupancy.Api.http`
+- Simulador de cliente: `http://localhost:5189/simulate`. Consulta los endpoints de lectura igual que una app cliente y muestra cada respuesta, la más reciente arriba. Se puede elegir un bus (`?bus=SJB-15456`): entonces consulta ese bus cada 5 s y su historial y eventos cada 15 s. Activo en Development; en otro ambiente se activa con `ClientDemo:Enabled=true`.
 
 ## Endpoints
 
