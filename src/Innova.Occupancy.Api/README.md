@@ -6,7 +6,7 @@ Por ahora todo se guarda **en memoria** (se pierde al reiniciar). Un simulador (
 
 > **Ver la API en acción:** abra el **[simulador de cliente](https://lg0618pp-002-site2.htempurl.com/simulate)** (`https://lg0618pp-002-site2.htempurl.com/simulate`). Hace las mismas llamadas que haría su app y muestra cada respuesta, la más reciente arriba. Permite elegir un bus.
 
-**Contenido:** [Guía para apps cliente](#guía-para-apps-cliente) · [Ejecutar](#ejecutar) · [Endpoints](#endpoints) · [Convenciones](#convenciones) · [Datos crudos](#datos-crudos-post-raw) · [Configuración](#configuración) · [Flota simulada](#flota-simulada-autobuses-unidos-de-coronado)
+**Contenido:** [Guía para apps cliente](#guía-para-apps-cliente) · [Ejecutar](#ejecutar) · [Endpoints](#endpoints) · [Convenciones](#convenciones) · [Datos raw](#datos-raw-post-raw) · [Configuración](#configuración) · [Flota simulada](#flota-simulada-autobuses-unidos-de-coronado)
 
 ## Guía para apps cliente
 
@@ -343,7 +343,7 @@ dotnet run --project src/Innova.Occupancy.Api
 | # | Endpoint | Qué recibe | Sensor de origen (supuesto) | Requerimiento |
 |---|---|---|---|---|
 | 5 | `POST /api/v1/vehicles/{vehicleId}/observations` | Resultado ya procesado: conteos, ocupación, GPS, estado del equipo | Todos los anteriores, combinados por la computadora edge del bus | RF-02; RF-03 |
-| 6 | `POST /api/v1/vehicles/{vehicleId}/raw` | **Datos crudos** del OnboardComputerApp: GPS en NMEA 0183, eventos del contador de puerta y resultados de la API de inferencia de visión. Esta API hace todos los cálculos. | GPS; contador 3D de puerta; API de visión (sin imágenes) | RF-02; RF-03; RF-07; RF-08 |
+| 6 | `POST /api/v1/vehicles/{vehicleId}/raw` | **Datos raw** del OnboardComputerApp: GPS en NMEA 0183, eventos del contador de puerta y resultados de la API de inferencia de visión. Esta API hace todos los cálculos. | GPS; contador 3D de puerta; API de visión (sin imágenes) | RF-02; RF-03; RF-07; RF-08 |
 
 ## Convenciones
 
@@ -356,7 +356,7 @@ dotnet run --project src/Innova.Occupancy.Api
 - **Errores** en formato Problem Details: 400 datos inválidos, 401 llave de dispositivo inválida, 404 bus sin datos.
 - Un mensaje más viejo que el último recibido no reemplaza la posición ni la ocupación actual, pero sí cuenta en eventos e historial.
 
-## Datos crudos (`POST /raw`)
+## Datos raw (`POST /raw`)
 
 El [**OnboardComputerApp**](../Innova.OnboardComputer.App/README.md) (en el bus o en un servidor) envía un mensaje cada ~10 s y al cerrarse las puertas. Cada parte conserva el formato de su fuente, así que reemplazar un sensor simulado por uno real solo requiere un adaptador:
 
@@ -373,7 +373,7 @@ Cálculos de la API:
 - **Pasajeros:** conteo acumulado del contador de puerta. La cámara no puede ver más personas de las que hay a bordo, así que si ve más, el conteo se corrige hacia arriba (`source: CABIN_CAMERA`). Un bus solo con cámara usa lo que la cámara ve (mediana de los cuadros del mensaje).
 - **`sequence`:** número creciente por bus. Un mensaje reenviado tras un error de red se acepta pero no se cuenta dos veces (`duplicate: true`).
 - **Capacidad:** viene del registro de flota (`Fleet:RegistryFile`); un bus no registrado recibe 404.
-- Cuando un bus envía datos crudos, el simulador deja de moverlo durante 2 minutos.
+- Cuando un bus envía datos raw, el simulador deja de moverlo durante 2 minutos.
 
 Ejemplo completo en `Innova.Occupancy.Api.http`.
 

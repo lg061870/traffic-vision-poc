@@ -1,6 +1,6 @@
 # OnboardComputerApp
 
-Aplicación de consola (.NET 10, *worker*) que corre en la computadora a bordo de cada bus. Reúne los **datos crudos** de tres fuentes y los envía a la [Occupancy API](../Innova.Occupancy.Api/README.md) con `POST /api/v1/vehicles/{vehicleId}/raw`. No calcula nada: la API hace todos los cálculos.
+Aplicación de consola (.NET 10, *worker*) que corre en la computadora a bordo de cada bus. Reúne los **datos raw** de tres fuentes y los envía a la [Occupancy API](../Innova.Occupancy.Api/README.md) con `POST /api/v1/vehicles/{vehicleId}/raw`. No calcula nada: la API hace todos los cálculos.
 
 | Fuente | Formato enviado | Interfaz |
 |---|---|---|
