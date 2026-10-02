@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace Innova.Occupancy.Api.Ingestion;
 
-public sealed record GpsFix(DateTimeOffset Time, double Lat, double Lon, double? SpeedKmh);
+public sealed record GpsFix(DateTimeOffset Time, double Lat, double Lon, double? SpeedKmh, double? HeadingDeg = null);
 
 /// <summary>
 /// Reads NMEA 0183 RMC and GGA sentences from any talker ($GP, $GN, $GL…). Sentences with a bad
@@ -12,6 +12,8 @@ public static class NmeaParser
 {
     public const string Format = "NMEA-0183";
     private const double KilometersPerKnot = 1.852;
+    // Below this speed a receiver's course is noise, so a stopped bus has no heading.
+    private const double MovingAboveKmh = 2;
 
     public static (IReadOnlyList<GpsFix> Fixes, int Rejected) Parse(IEnumerable<string> sentences, DateTimeOffset messageTime)
     {
@@ -29,7 +31,8 @@ public static class NmeaParser
             }
         }
 
-        return (fixes.OrderBy(fix => fix.Time).ToArray(), rejected);
+        // When RMC and GGA report the same instant, RMC goes last: only it carries speed and course.
+        return (fixes.OrderBy(fix => fix.Time).ThenBy(fix => fix.SpeedKmh is not null).ToArray(), rejected);
     }
 
     public static bool TryParse(string sentence, DateTimeOffset messageTime, out GpsFix fix)
@@ -47,13 +50,13 @@ public static class NmeaParser
                      fields[2] == "A" &&
                      TryCoordinates(fields[3], fields[4], fields[5], fields[6], out var lat, out var lon) &&
                      TryDateTime(fields[9], fields[1], out var time) &&
-                     Create(time, lat, lon, ParseDouble(fields[7]) * KilometersPerKnot, out fix),
+                     Create(time, lat, lon, ParseDouble(fields[7]) * KilometersPerKnot, ParseCourse(fields[8]), out fix),
             // $--GGA,hhmmss.ss,llll.ll,a,yyyyy.yy,a,quality,... (no date: taken from the message)
             "GGA" => fields.Length >= 7 &&
                      fields[6] is not ("" or "0") &&
                      TryCoordinates(fields[2], fields[3], fields[4], fields[5], out var ggaLat, out var ggaLon) &&
                      TryTimeOnMessageDay(fields[1], messageTime, out var ggaTime) &&
-                     Create(ggaTime, ggaLat, ggaLon, null, out fix),
+                     Create(ggaTime, ggaLat, ggaLon, null, null, out fix),
             _ => false
         };
     }
@@ -160,9 +163,16 @@ public static class NmeaParser
     private static double ParseDouble(string value) =>
         double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) ? number : 0;
 
-    private static bool Create(DateTimeOffset time, double lat, double lon, double? speedKmh, out GpsFix fix)
+    // Course over ground in degrees true; empty when the receiver has none.
+    private static double? ParseCourse(string value) =>
+        double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var course) && double.IsFinite(course)
+            ? ((course % 360) + 360) % 360
+            : null;
+
+    private static bool Create(DateTimeOffset time, double lat, double lon, double? speedKmh, double? headingDeg, out GpsFix fix)
     {
-        fix = new GpsFix(time, Math.Round(lat, 6), Math.Round(lon, 6), speedKmh is { } speed ? Math.Round(speed, 1) : null);
+        var heading = speedKmh >= MovingAboveKmh && headingDeg is { } course ? Math.Round(course, 1) % 360 : (double?)null;
+        fix = new GpsFix(time, Math.Round(lat, 6), Math.Round(lon, 6), speedKmh is { } speed ? Math.Round(speed, 1) : null, heading);
         return true;
     }
 

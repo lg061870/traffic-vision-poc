@@ -48,6 +48,15 @@ app.UseCors();
 app.MapOpenApi();
 app.MapControllers();
 
+// A demo page that polls the read endpoints like a client app and logs every response. It only
+// uses the public HTTP contract; it is served here so the demo needs no separate site.
+// On in Development; ClientDemo:Enabled=true turns it on elsewhere (e.g. the demo server).
+if (app.Configuration.GetValue("ClientDemo:Enabled", app.Environment.IsDevelopment()))
+{
+    var page = Path.Combine(app.Environment.ContentRootPath, "ClientDemo", "simulate.html");
+    app.MapGet("/simulate", () => Results.File(page, "text/html; charset=utf-8")).ExcludeFromDescription();
+}
+
 if (app.Configuration.GetSection(IngestionOptions.SectionName).Get<IngestionOptions>()?.DeviceKeys.Count is null or 0)
 {
     app.Logger.LogWarning("No Ingestion:DeviceKeys configured: any caller can post observations. Use only for local development.");

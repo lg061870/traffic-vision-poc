@@ -143,9 +143,10 @@ public sealed class VehiclesController(
         }
 
         if (observation.Location is { } location &&
-            (location.Lat is < -90 or > 90 || location.Lon is < -180 or > 180 || location.SpeedKmh < 0))
+            (location.Lat is < -90 or > 90 || location.Lon is < -180 or > 180 || location.SpeedKmh < 0 ||
+             location.HeadingDeg is < 0 or >= 360))
         {
-            return "location must have lat in [-90, 90], lon in [-180, 180] and a non-negative speedKmh.";
+            return "location must have lat in [-90, 90], lon in [-180, 180], a non-negative speedKmh and headingDeg in [0, 360).";
         }
 
         if (observation.Occupancy is { } occupancy &&

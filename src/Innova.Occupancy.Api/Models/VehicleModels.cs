@@ -23,7 +23,9 @@ public enum OccupancyStatus
     Full
 }
 
-public sealed record GeoLocation(double Lat, double Lon, double? SpeedKmh = null);
+/// <param name="HeadingDeg">Direction of travel in degrees clockwise from true north, [0, 360).
+/// Null when the bus is stopped or the GPS gives no course.</param>
+public sealed record GeoLocation(double Lat, double Lon, double? SpeedKmh = null, double? HeadingDeg = null);
 
 // ---- Sent by the on-board equipment (write side) ----
 
