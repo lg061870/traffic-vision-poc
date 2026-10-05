@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Serves the built occupancy-reference-web app as static files, so the map can be published
+       from Visual Studio (Web Deploy) like the API. It has no API of its own: the map calls the
+       Occupancy API over HTTP. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- SmarterASP puts every site of an account in one app pool, where only one ASP.NET Core
+         app may run in-process (HTTP 500.35) and modes can't be mixed (500.34). -->
+    <AspNetCoreHostingModel>OutOfProcess</AspNetCoreHostingModel>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Publish runs "npm run build" in the React project and places its output in wwwroot. -->
+    <ProjectReference Include="..\occupancy-reference-web\occupancy-reference-web.esproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

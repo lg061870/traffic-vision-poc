@@ -7,6 +7,7 @@ Solución del equipo **Proyecto INNOVA** para el Hackatón Centroamericano de In
 | Bus Passenger Vision (POC) | `src/TrafficVision.Api`, `src/traffic-vision-web` | Prueba de concepto de visión artificial: detecta y sigue pasajeros en video de cámaras dentro del bus. |
 | Occupancy API | `src/Innova.Occupancy.Api` | Sirve únicamente el resultado procesado de los sensores y el video de cada bus: ocupación, eventos de puerta y posición. Ver [su README](src/Innova.Occupancy.Api/README.md). |
 | Occupancy Reference Web | `src/occupancy-reference-web` | App de referencia (React) que lee la Occupancy API: mapa de la flota, lista de buses, historial y eventos de puerta. Ver [su README](src/occupancy-reference-web/README.md). |
+| Occupancy Map (host) | `src/Innova.Occupancy.Map` | Sitio ASP.NET Core que sirve la app de referencia ya compilada, para publicarla desde Visual Studio. |
 | Pruebas de la Occupancy API | `tests/Innova.Occupancy.Api.Tests` | Pruebas unitarias y de endpoints (xUnit). |
 | OnboardComputerApp | `src/Innova.OnboardComputer.App` | Corre en cada bus: reúne GPS (NMEA 0183), eventos del contador de puerta y resultados de visión, y los envía a la Occupancy API. Incluye un modo de simulación. Ver [su README](src/Innova.OnboardComputer.App/README.md). |
 | Pruebas del OnboardComputerApp | `tests/Innova.OnboardComputer.App.Tests` | Pruebas unitarias y de extremo a extremo contra la Occupancy API (xUnit). |
