@@ -15,7 +15,9 @@
 *.local
 
 # Editor and OS files
-.vscode/
+**/.vscode/*
+# Visual Studio opens the browser for the React apps (.esproj) from these.
+!src/*/.vscode/launch.json
 .idea/
 .DS_Store
 Thumbs.db

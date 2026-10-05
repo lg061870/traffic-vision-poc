@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.6887863">
+  <!-- React + Vite app. Visual Studio runs npm install on restore and "npm run dev" on F5.
+       The production build (npm run build) runs on Publish only, so building the solution stays fast. -->
+  <PropertyGroup>
+    <StartupCommand>npm run dev</StartupCommand>
+    <ShouldRunBuildScript>false</ShouldRunBuildScript>
+    <BuildOutputFolder>$(MSBuildProjectDirectory)\dist</BuildOutputFolder>
+  </PropertyGroup>
+</Project>
