@@ -89,6 +89,19 @@ public sealed class VehiclesApiTests
     }
 
     [Fact]
+    public async Task Trip_plan_validates_points_and_answers_with_options()
+    {
+        using var client = CreateClient(("environment", "Development"));
+
+        var invalid = await client.GetAsync("/api/v1/trips/plan?from=9.93&to=9.94,-84.07");
+        var plan = await client.GetFromJsonAsync<JsonElement>("/api/v1/trips/plan?from=9.9330,-84.0790&to=9.9360,-84.0770");
+
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.Equal("WALK", plan.GetProperty("options")[0].GetProperty("legs")[0].GetProperty("type").GetString());
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/simulateroute")).StatusCode);
+    }
+
+    [Fact]
     public async Task Configured_device_key_is_required()
     {
         using var client = CreateClient(("Ingestion:DeviceKeys:SJB-8754", "secret-key"));

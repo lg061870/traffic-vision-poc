@@ -12,7 +12,7 @@
 
   <ItemGroup>
     <Content Update="MockData\**\*.json" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="ClientDemo\simulate.html" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="ClientDemo\*.html" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

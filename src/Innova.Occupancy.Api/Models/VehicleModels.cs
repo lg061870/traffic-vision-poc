@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Innova.Occupancy.Api.Transit;
 
 namespace Innova.Occupancy.Api.Models;
 
@@ -27,6 +28,12 @@ public enum OccupancyStatus
 /// Null when the bus is stopped or the GPS gives no course.</param>
 public sealed record GeoLocation(double Lat, double Lon, double? SpeedKmh = null, double? HeadingDeg = null);
 
+/// <summary>
+/// The trip a bus is running, as in GTFS-Realtime: which route and which way. Null when the bus is
+/// not in service (parked), so it is never offered to riders.
+/// </summary>
+public sealed record TripDescriptor(string RouteId, TravelDirection Direction);
+
 // ---- Sent by the on-board equipment (write side) ----
 
 public sealed record VehicleObservation(
@@ -34,7 +41,8 @@ public sealed record VehicleObservation(
     GeoLocation? Location,
     OccupancyReading? Occupancy,
     IReadOnlyList<DoorEventReport>? DoorEvents,
-    DeviceStatusReport? Device);
+    DeviceStatusReport? Device,
+    TripDescriptor? Trip = null);
 
 public sealed record OccupancyReading(int PassengerCount, int Capacity, SensorSource Source);
 
@@ -54,6 +62,7 @@ public sealed record VehicleState(
     DateTimeOffset AsOf,
     bool Stale,
     GeoLocation? Location,
+    TripDescriptor? Trip,
     OccupancySnapshot? Occupancy,
     DeviceHealth Device);
 

@@ -35,6 +35,7 @@ public sealed class VehicleStateStore(IOptions<OccupancyApiOptions> options, Tim
             {
                 record.AsOf = observation.Timestamp;
                 record.Location = observation.Location ?? record.Location;
+                record.Trip = observation.Trip;
             }
 
             if (observation.Occupancy is { } reading)
@@ -150,6 +151,7 @@ public sealed class VehicleStateStore(IOptions<OccupancyApiOptions> options, Tim
                 asOf,
                 stale,
                 record.Location,
+                record.Trip,
                 record.Occupancy,
                 new DeviceHealth(!stale, record.LastSeen, record.CameraOnline, record.Firmware));
         }
@@ -176,6 +178,7 @@ public sealed class VehicleStateStore(IOptions<OccupancyApiOptions> options, Tim
         public DateTimeOffset? AsOf { get; set; }
         public DateTimeOffset LastSeen { get; set; }
         public GeoLocation? Location { get; set; }
+        public TripDescriptor? Trip { get; set; }
         public OccupancySnapshot? Occupancy { get; set; }
         public bool? CameraOnline { get; set; }
         public string? Firmware { get; set; }

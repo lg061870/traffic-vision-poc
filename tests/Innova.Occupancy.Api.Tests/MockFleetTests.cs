@@ -1,4 +1,5 @@
 using Innova.Occupancy.Api.Models;
+using Innova.Occupancy.Api.Transit;
 using Innova.Occupancy.Api.Vehicles;
 using Innova.Occupancy.Api.Vehicles.Simulation;
 using Xunit.Abstractions;
@@ -28,14 +29,15 @@ public sealed class MockFleetTests(ITestOutputHelper output)
     {
         // A street running due north; the bus starts near the south end heading north.
         GeoLocation[] corridor = [new(9.90, -84.0), new(9.95, -84.0)];
-        var bus = new SimulatedBus("SJB-0001", 90, MockRouteKind.Trunk, corridor, 0.1, 1, 0, 0, new Random(1));
+        var route = TransitRoute.From(new MockRoute("T1", "Ruta T1 · Sur – Norte", MockRouteKind.Trunk, corridor));
+        var bus = new SimulatedBus("SJB-0001", 90, route, 0.1, TravelDirection.Outbound, 0, 0);
         var noon = Midnight.AddHours(12);
 
         var moving = bus.Step(noon, TimeSpan.FromSeconds(5), new Random(1)).Location!;
         Assert.True(moving.SpeedKmh > 0);
         Assert.Equal(0, moving.HeadingDeg);
 
-        var southbound = new SimulatedBus("SJB-0002", 90, MockRouteKind.Trunk, corridor, 0.9, -1, 0, 0, new Random(1));
+        var southbound = new SimulatedBus("SJB-0002", 90, route, 0.9, TravelDirection.Inbound, 0, 0);
         Assert.Equal(180, southbound.Step(noon, TimeSpan.FromSeconds(5), new Random(1)).Location!.HeadingDeg);
 
         // Run until the bus stops; a stopped bus has no heading.

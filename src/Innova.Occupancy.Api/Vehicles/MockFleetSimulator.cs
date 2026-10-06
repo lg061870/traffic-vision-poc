@@ -1,6 +1,7 @@
 using Innova.Occupancy.Api.Configuration;
 using Innova.Occupancy.Api.Ingestion;
 using Innova.Occupancy.Api.Models;
+using Innova.Occupancy.Api.Transit;
 using Innova.Occupancy.Api.Vehicles.Simulation;
 using Microsoft.Extensions.Options;
 
@@ -43,7 +44,7 @@ public sealed class MockFleetSimulator(
         }
 
         var interval = TimeSpan.FromSeconds(Math.Max(1, options.Value.IntervalSeconds));
-        var hourOverride = ParseTimeOfDay(options.Value.TimeOfDayOverride);
+        var hourOverride = TransitTiming.ParseTimeOfDay(options.Value.TimeOfDayOverride);
 
         // Replay the last minutes so loads, door events and history already look lived-in.
         var start = time.GetUtcNow();
@@ -78,16 +79,10 @@ public sealed class MockFleetSimulator(
         while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
-    private static double? ParseTimeOfDay(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null
-        : TimeOnly.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var timeOfDay)
-            ? timeOfDay.ToTimeSpan().TotalHours
-            : throw new InvalidOperationException($"MockFleet:TimeOfDayOverride '{value}' is not a time such as 07:30.");
-
     /// <summary>Spreads each route's buses evenly along its corridor, alternating directions.</summary>
     public static IReadOnlyList<SimulatedBus> CreateBuses(MockFleet fleet, Random random)
     {
-        var routes = fleet.Routes.ToDictionary(route => route.RouteId);
+        var routes = fleet.Routes.ToDictionary(route => route.RouteId, TransitRoute.From);
         return fleet.Buses
             .Where(bus => !bus.OutOfService)
             .GroupBy(bus => bus.RouteId)
@@ -98,13 +93,11 @@ public sealed class MockFleetSimulator(
                 return onRoute.Select((bus, index) => new SimulatedBus(
                     bus.VehicleId,
                     bus.Capacity,
-                    route.Kind,
-                    route.Corridor,
+                    route,
                     (index + 0.5) / onRoute.Length,
-                    index % 2 == 0 ? -1 : 1,
+                    index % 2 == 0 ? TravelDirection.Inbound : TravelDirection.Outbound,
                     (int)(bus.Capacity * (0.1 + (random.NextDouble() * 0.3))),
-                    (index + 0.5) / onRoute.Length,
-                    random));
+                    (index + 0.5) / onRoute.Length));
             })
             .ToArray();
     }

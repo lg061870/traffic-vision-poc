@@ -1,26 +1,19 @@
 using Innova.Occupancy.Api.Models;
+using Innova.Occupancy.Api.Transit;
 
 namespace Innova.Occupancy.Api.Vehicles.Simulation;
 
 /// <summary>
-/// One bus driving back and forth along its corridor: it stops every few hundred meters, empties
+/// One bus driving back and forth along its route: it stops at each of the route's stops, empties
 /// at each end of the line, and boards passengers according to Costa Rica rush hours.
 /// </summary>
 public sealed class SimulatedBus
 {
-    private static readonly TimeSpan CostaRicaOffset = TimeSpan.FromHours(-6);
-    private static readonly TimeSpan StopDwell = TimeSpan.FromSeconds(20);
-    private static readonly TimeSpan TerminalLayover = TimeSpan.FromMinutes(5);
-
     private readonly int _capacity;
-    private readonly MockRouteKind _kind;
-    private readonly IReadOnlyList<GeoLocation> _corridor;
-    private readonly double[] _segmentMeters;
-    private readonly double _totalMeters;
+    private readonly TransitRoute _route;
     private double _metersAlong;
-    private int _direction;
-    private double _metersSinceStop;
-    private double _nextStopMeters;
+    private TravelDirection _direction;
+    private bool _atStop;
     private bool _atTerminal;
     private bool _parked;
     private TimeSpan _waitRemaining;
@@ -28,25 +21,19 @@ public sealed class SimulatedBus
     public SimulatedBus(
         string vehicleId,
         int capacity,
-        MockRouteKind kind,
-        IReadOnlyList<GeoLocation> corridor,
+        TransitRoute route,
         double startFraction,
-        int startDirection,
+        TravelDirection startDirection,
         int initialPassengers,
-        double serviceRank,
-        Random random)
+        double serviceRank)
     {
         ServiceRank = serviceRank;
         VehicleId = vehicleId;
         _capacity = capacity;
-        _kind = kind;
-        _corridor = corridor;
-        _segmentMeters = corridor.Zip(corridor.Skip(1), DistanceMeters).ToArray();
-        _totalMeters = _segmentMeters.Sum();
-        _metersAlong = Math.Clamp(startFraction, 0, 1) * _totalMeters;
-        _direction = startDirection >= 0 ? 1 : -1;
+        _route = route;
+        _metersAlong = Math.Clamp(startFraction, 0, 1) * route.Length;
+        _direction = startDirection;
         Passengers = Math.Clamp(initialPassengers, 0, capacity);
-        _nextStopMeters = NextStopSpacing(random);
     }
 
     public string VehicleId { get; }
@@ -59,13 +46,15 @@ public sealed class SimulatedBus
     /// <summary>Everyone who boarded since the bus was created (used to calibrate daily ridership).</summary>
     public int TotalBoardings { get; private set; }
 
-    private bool Inbound => _direction < 0;
+    private bool Inbound => _direction == TravelDirection.Inbound;
+
+    private int Sign => Inbound ? -1 : 1;
 
     private int MaximumLoad => (int)(_capacity * 1.15);
 
     public VehicleObservation Step(DateTimeOffset now, TimeSpan elapsed, Random random, double? hourOverride = null)
     {
-        var hour = hourOverride ?? now.ToOffset(CostaRicaOffset).TimeOfDay.TotalHours;
+        var hour = TransitTiming.HourOfDay(now, hourOverride);
         DoorEventReport? doorEvent = null;
         double speedKmh = 0;
         var inService = ServiceRank < ActiveShare(hour);
@@ -93,90 +82,59 @@ public sealed class SimulatedBus
             // fill buses at rush hour: San José in the evening, and Coronado in the morning,
             // where feeder passengers transfer to the trunk line.
             var alightings = Passengers;
-            _direction = -_direction;
+            _direction = Inbound ? TravelDirection.Outbound : TravelDirection.Inbound;
             _atTerminal = false;
             var terminalBoardings = (int)Math.Round(_capacity * Demand(hour) * (0.5 + (random.NextDouble() * 0.5)));
             doorEvent = Board(now, terminalBoardings, alightings);
-            _waitRemaining = TerminalLayover;
+            _waitRemaining = TransitTiming.TerminalLayover;
         }
-        else if (_metersSinceStop >= _nextStopMeters)
+        else if (_atStop)
         {
             var share = Inbound ? 0.03 : 0.15;
             var alightings = (int)Math.Round(Passengers * random.NextDouble() * share * 2);
             var boardings = (int)Math.Round(random.NextDouble() * StopBoardingMaximum * Demand(hour));
             doorEvent = Board(now, boardings, alightings);
-            _waitRemaining = StopDwell - elapsed;
-            _metersSinceStop = 0;
-            _nextStopMeters = NextStopSpacing(random);
+            _waitRemaining = TransitTiming.StopDwell - elapsed;
+            _atStop = false;
         }
         else
         {
-            speedKmh = CruiseKmh(hour) + random.Next(-4, 5);
-            var meters = speedKmh / 3.6 * elapsed.TotalSeconds;
-            _metersSinceStop += meters;
-            _metersAlong += meters * _direction;
-            if (_metersAlong <= 0 || _metersAlong >= _totalMeters)
+            speedKmh = TransitTiming.CruiseKmh(_route.IsTrunk, hour) + random.Next(-4, 5);
+            var target = _metersAlong + (speedKmh / 3.6 * elapsed.TotalSeconds * Sign);
+            var nextStop = NextStop();
+            var end = _route.EndOf(_direction);
+            if (Sign * (target - end) >= 0)
             {
-                _metersAlong = Math.Clamp(_metersAlong, 0, _totalMeters);
+                _metersAlong = end;
                 _atTerminal = true;
+            }
+            else if (nextStop is { } stop && Sign * (target - stop) >= 0)
+            {
+                // The bus pulls up at the stop; doors open on the next step.
+                _metersAlong = stop;
+                _atStop = true;
+            }
+            else
+            {
+                _metersAlong = target;
             }
         }
 
+        // A parked bus runs no trip, so riders are never offered it.
+        var trip = _parked ? null : new TripDescriptor(_route.RouteId, _direction);
         return new VehicleObservation(
             now,
             Position() with { SpeedKmh = speedKmh, HeadingDeg = speedKmh > 0 ? Heading() : null },
             new OccupancyReading(Passengers, _capacity, SensorSource.Simulated),
             doorEvent is null ? null : [doorEvent],
-            new DeviceStatusReport(true, "sim-2.0"));
+            new DeviceStatusReport(true, "sim-2.0"),
+            trip);
     }
 
-    public GeoLocation Position()
-    {
-        var remaining = _metersAlong;
-        for (var index = 0; index < _segmentMeters.Length; index++)
-        {
-            if (remaining <= _segmentMeters[index] || index == _segmentMeters.Length - 1)
-            {
-                var fraction = _segmentMeters[index] <= 0 ? 0 : Math.Clamp(remaining / _segmentMeters[index], 0, 1);
-                var start = _corridor[index];
-                var end = _corridor[index + 1];
-                return new GeoLocation(
-                    Math.Round(start.Lat + ((end.Lat - start.Lat) * fraction), 6),
-                    Math.Round(start.Lon + ((end.Lon - start.Lon) * fraction), 6));
-            }
-
-            remaining -= _segmentMeters[index];
-        }
-
-        return _corridor[0];
-    }
+    public GeoLocation Position() => _route.PointAt(_metersAlong);
 
     /// <summary>Direction of travel along the current street segment, in degrees from north.</summary>
-    public double Heading()
-    {
-        var index = SegmentIndex();
-        var (from, to) = _direction > 0 ? (_corridor[index], _corridor[index + 1]) : (_corridor[index + 1], _corridor[index]);
-        var meanLat = (from.Lat + to.Lat) / 2 * Math.PI / 180;
-        var east = (to.Lon - from.Lon) * Math.Cos(meanLat);
-        var north = to.Lat - from.Lat;
-        return Math.Round(((Math.Atan2(east, north) * 180 / Math.PI) + 360) % 360, 1) % 360;
-    }
-
-    private int SegmentIndex()
-    {
-        var remaining = _metersAlong;
-        for (var index = 0; index < _segmentMeters.Length - 1; index++)
-        {
-            if (remaining <= _segmentMeters[index])
-            {
-                return index;
-            }
-
-            remaining -= _segmentMeters[index];
-        }
-
-        return _segmentMeters.Length - 1;
-    }
+    public double Heading() => _route.HeadingAt(_metersAlong, _direction);
 
     /// <summary>Share of the fleet in service: everyone at rush hour, about half otherwise, none at night.</summary>
     public static double ActiveShare(double hour) => hour switch
@@ -199,14 +157,16 @@ public sealed class SimulatedBus
         _ => 0.03
     };
 
-    /// <summary>GAM traffic: much slower at rush hour.</summary>
-    private double CruiseKmh(double hour)
-    {
-        var rushHour = hour is (>= 6 and < 9) or (>= 16 and < 19);
-        return _kind == MockRouteKind.Trunk ? (rushHour ? 12 : 20) : (rushHour ? 16 : 24);
-    }
+    private int StopBoardingMaximum => _route.IsTrunk ? 4 : 2;
 
-    private int StopBoardingMaximum => _kind == MockRouteKind.Trunk ? 4 : 2;
+    /// <summary>The next intermediate stop ahead; the ends of the line are terminals, handled apart.</summary>
+    private double? NextStop()
+    {
+        var ahead = _route.Stops
+            .Select(stop => stop.Meters)
+            .Where(meters => meters > 1 && meters < _route.Length - 1 && Sign * (meters - _metersAlong) > 0.5);
+        return Inbound ? ahead.Cast<double?>().LastOrDefault() : ahead.Cast<double?>().FirstOrDefault();
+    }
 
     private DoorEventReport Board(DateTimeOffset now, int boardings, int alightings)
     {
@@ -216,17 +176,5 @@ public sealed class SimulatedBus
         Passengers = Passengers - alightings + boardings;
         TotalBoardings += boardings;
         return new DoorEventReport(1, boardings, alightings, now.AddSeconds(-25), now.AddSeconds(-5));
-    }
-
-    private double NextStopSpacing(Random random) =>
-        (_kind == MockRouteKind.Trunk ? 450 : 400) * (0.7 + (random.NextDouble() * 0.6));
-
-    private static double DistanceMeters(GeoLocation first, GeoLocation second)
-    {
-        // Equirectangular approximation: accurate enough over a few kilometers.
-        var meanLat = (first.Lat + second.Lat) / 2 * Math.PI / 180;
-        var dx = (second.Lon - first.Lon) * Math.Cos(meanLat) * 111_320;
-        var dy = (second.Lat - first.Lat) * 110_540;
-        return Math.Sqrt((dx * dx) + (dy * dy));
     }
 }

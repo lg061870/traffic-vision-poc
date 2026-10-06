@@ -1,10 +1,12 @@
 # Occupancy API
 
-Sirve **solo el resultado** del procesamiento de sensores y video de cada bus: ocupación, eventos de abordaje y salida, y posición. Rutas, paradas, tarifas, lugares y planificación de viajes pertenecen a otras APIs, que pueden leer de esta.
+Sirve el resultado del procesamiento de sensores y video de cada bus (ocupación, eventos de abordaje y salida, y posición) y, con esos datos en vivo, **planifica viajes en la línea de Coronado**: qué bus tomar desde donde está el usuario hasta su destino. Tarifas, lugares y búsqueda de direcciones pertenecen a otras APIs.
 
 Por ahora todo se guarda **en memoria** (se pierde al reiniciar). Un simulador (`MockFleet`) genera buses que se mueven y cambian de ocupación para que la app móvil y el dashboard puedan desarrollarse antes de que existan dispositivos reales.
 
 > **Ver la API en acción:** abra el **[simulador de cliente](https://lg0618pp-002-site2.htempurl.com/simulate)** (`https://lg0618pp-002-site2.htempurl.com/simulate`). Hace las mismas llamadas que haría su app y muestra cada respuesta, la más reciente arriba. Permite elegir un bus.
+>
+> **Planificar un viaje:** el **[simulador de rutas](https://lg0618pp-002-site2.htempurl.com/simulateroute)** (`https://lg0618pp-002-site2.htempurl.com/simulateroute`) marca origen y destino en un mapa y consulta `GET /api/v1/trips/plan` cada 10 s, como lo haría la app.
 
 **Contenido:** [Guía para apps cliente](#guía-para-apps-cliente) · [Ejecutar](#ejecutar) · [Endpoints](#endpoints) · [Convenciones](#convenciones) · [Datos raw](#datos-raw-post-raw) · [Configuración](#configuración) · [Flota simulada](#flota-simulada-autobuses-unidos-de-coronado)
 
@@ -60,6 +62,7 @@ sequenceDiagram
 | Un solo bus, sin la flota | `GET /api/v1/vehicles/{placa}` | 5–10 s |
 | Gráfico de ocupación de un bus | `GET /api/v1/vehicles/{placa}/history` | 15–60 s, solo con el detalle abierto |
 | Subidas y bajadas de un bus | `GET /api/v1/vehicles/{placa}/events?since=` | 15–30 s, solo con el detalle abierto |
+| Cómo llegar de A a B | `GET /api/v1/trips/plan?from=lat,lon&to=lat,lon` | Al pedir la ruta y cada 10–15 s mientras el usuario va a la parada |
 
 Para ver estas llamadas en vivo, abra el [simulador de cliente](https://lg0618pp-002-site2.htempurl.com/simulate).
 
@@ -210,6 +213,9 @@ curl "https://lg0618pp-002-site2.htempurl.com/api/v1/vehicles/SJB-16959/history?
 
 # Subidas y bajadas desde una hora dada (envíe siempre since)
 curl "https://lg0618pp-002-site2.htempurl.com/api/v1/vehicles/SJB-16959/events?since=2026-10-01T19:52:00Z"
+
+# Cómo llegar de Ipís al centro de San José
+curl "https://lg0618pp-002-site2.htempurl.com/api/v1/trips/plan?from=9.9620,-84.0300&to=9.9330,-84.0790"
 ```
 
 Así responde `GET /api/v1/vehicles` (un bus de la lista):
@@ -248,6 +254,8 @@ Así responde `GET /api/v1/vehicles` (un bus de la lista):
 | `location.lon` | número | Longitud GPS |
 | `location.speedKmh` | número o vacío | Velocidad en km/h |
 | `location.headingDeg` | número o vacío | Dirección de avance: 0 = norte, 90 = este, 180 = sur, 270 = oeste. Vacío si está detenido |
+| `trip.routeId` | texto o vacío | Ruta que está haciendo: `R142` (troncal) o `R142-01`…`R142-10` (ramales). `trip` viene vacío si el bus no está en servicio |
+| `trip.direction` | texto | `INBOUND` (hacia San José, o hacia la terminal en los ramales) u `OUTBOUND` (en sentido contrario) |
 | `occupancy.passengerCount` | entero | Pasajeros a bordo |
 | `occupancy.capacity` | entero | Capacidad del bus |
 | `occupancy.percent` | entero | Porcentaje de ocupación (puede pasar de 100) |
@@ -306,6 +314,49 @@ Devuelve `vehicleId` y una lista `events`, del más viejo al más nuevo:
 | `closedAt` | fecha y hora | Cuándo se cerró |
 | `occupancyAfter` | entero o vacío | Pasajeros a bordo al cerrar la puerta |
 
+#### `GET /api/v1/trips/plan`
+
+Opciones para ir de `from` a `to` en la línea de Coronado, la mejor primero. Cada opción combina caminatas y buses **específicos** (con placa y ocupación en vivo), con a lo sumo un transbordo (en la práctica, en la terminal de Coronado). Solo se ofrece un bus si el usuario alcanza a caminar hasta la parada, con margen, antes de que pase.
+
+```mermaid
+flowchart LR
+    A(("Origen")) -- "WALK" --> S1["Parada de subida"]
+    S1 -- "BUS: placa, hora, ocupación" --> T["Terminal de Coronado"]
+    T -- "BUS (si hay transbordo)" --> S2["Parada de bajada"]
+    S1 -. "BUS directo" .-> S2
+    S2 -- "WALK" --> B(("Destino"))
+```
+
+| Parámetro | Por defecto | Qué es |
+|---|---|---|
+| `from`, `to` | obligatorios | `lat,lon`, por ejemplo `9.9620,-84.0300`: el GPS del teléfono y el destino de la búsqueda de direcciones |
+| `walkKmh` | `4.5` | Velocidad al caminar (1–8) |
+| `maxWalkMeters` | `1000` | Máximo a caminar hasta una parada (100–3000) |
+| `marginSeconds` | `60` | Margen para llegar a la parada antes que el bus (0–600) |
+
+Devuelve `from`, `to`, `generatedAt`, `message` (por qué no hay opciones, si es el caso) y `options`:
+
+| Campo | Tipo | Qué es |
+|---|---|---|
+| `departAt`, `arriveAt` | fecha y hora | Salida (ahora) y llegada al destino |
+| `durationMinutes` | número | Duración total |
+| `transfers` | entero | 0 = directo, 1 = un transbordo |
+| `warnings` | lista de textos | Avisos para mostrar: bus lleno, margen ajustado, espera larga, bus en la terminal |
+| `legs[]` | lista | Tramos en orden |
+| `legs[].type` | texto | `WALK` o `BUS` |
+| `legs[].from`, `legs[].to` | lugar | `name`, `lat`, `lon` y `stopId` si es una parada |
+| `legs[].departAt`, `legs[].arriveAt` | fecha y hora | En un `BUS`, `departAt` es cuando el bus pasa por la parada de subida |
+| `legs[].minutes`, `legs[].meters` | números | Duración y distancia del tramo |
+| `legs[].bus.vehicleId` | texto | Placa del bus que hay que tomar |
+| `legs[].bus.routeName`, `headsign`, `direction` | textos | "Ruta 142" hacia "San José", `INBOUND` |
+| `legs[].bus.waitMinutes` | número | Espera en la parada después de llegar caminando |
+| `legs[].bus.stops` | entero | Paradas que recorre hasta bajarse |
+| `legs[].bus.vehicle` | objeto | El bus ahora: `location`, `speedKmh`, `headingDeg`, `passengerCount`, `capacity`, `percent`, `status`, `distanceToStopMeters` |
+| `legs[].bus.laterBuses` | lista | Los siguientes buses por esa parada (`vehicleId`, `arriveAt`, ocupación), por si el primero viene lleno |
+| `legs[].bus.path` | lista de lat, lon | El recorrido del tramo, para dibujarlo en el mapa |
+
+Pídalo de nuevo cada 10–15 s mientras el usuario va a la parada: los buses se mueven y las horas cambian.
+
 #### Errores
 
 Vienen en formato [Problem Details](https://www.rfc-editor.org/rfc/rfc9457); el campo `title` explica qué pasó.
@@ -326,6 +377,7 @@ dotnet run --project src/Innova.Occupancy.Api
 - Contrato OpenAPI (para generar tipos en la app): `http://localhost:5189/openapi/v1.json`
 - Ejemplos listos: `Innova.Occupancy.Api.http`
 - Simulador de cliente: [`http://localhost:5189/simulate`](http://localhost:5189/simulate). Consulta los endpoints de lectura igual que una app cliente y muestra cada respuesta, la más reciente arriba. Se puede elegir un bus (`?bus=SJB-15456`): entonces consulta ese bus cada 5 s y su historial y eventos cada 15 s. Activo en Development; en otro ambiente se activa con `ClientDemo:Enabled=true`.
+- Simulador de rutas: [`http://localhost:5189/simulateroute`](http://localhost:5189/simulateroute). Origen y destino en un mapa; consulta `GET /api/v1/trips/plan` cada 10 s y dibuja la mejor opción. Se activa igual que el simulador de cliente.
 
 ## Endpoints
 
@@ -337,6 +389,7 @@ dotnet run --project src/Innova.Occupancy.Api
 | 2 | `GET /api/v1/vehicles/{vehicleId}` | Último estado de un bus | Igual que #1 | RF-04; diagrama paso 6 |
 | 3 | `GET /api/v1/vehicles/{vehicleId}/events?since=` | Abordajes y salidas por puerta, con hora y lugar | Contador 3D cenital de puerta; GPS | RF-02; RF-07/RF-08 |
 | 4 | `GET /api/v1/vehicles/{vehicleId}/history?from=&to=&interval=` | Ocupación en el tiempo (último valor y pico por intervalo) | Igual que #1, almacenado | RF-05; RF-06 |
+| 4b | `GET /api/v1/trips/plan?from=&to=` | Cómo llegar de A a B en la línea de Coronado: caminatas, el bus exacto que conviene tomar, transbordo y hora de llegada | Posición y ocupación en vivo de #1 | Planificación de viajes |
 
 **Escritura** (solo el equipo a bordo de cada bus):
 
@@ -397,10 +450,11 @@ Los datos simulados representan a **Autobuses Unidos de Coronado S.A.** con su m
 
 - **43 buses:** 27 troncales en la **Ruta 142** (San José ↔ San Isidro de Coronado) y 16 alimentadores en **10 ramales** que llevan pasajeros a la terminal de Coronado.
 - **Unos 28 000 pasajeros al día.** Una prueba simula 24 horas completas y verifica el total (±20 %; hoy da unos 27 000) y que los buses troncales se llenen en ambas horas pico.
+- **Paradas:** fijas, repartidas cada ~400 m a lo largo de cada ruta (por ejemplo "Ruta 142 · Parada 9"); los extremos se llaman como el lugar ("San José", "Terminal de Coronado", "Cascajal"). Los buses simulados se detienen en ellas y el planificador de viajes usa las mismas.
 - **Horas pico:** de mañana hacia San José y hacia la terminal; de tarde de regreso. Los buses van más lentos en hora pico, se detienen unos 20 s por parada y descansan 5 min en cada terminal.
 - **Servicio:** toda la flota en hora pico, cerca de la mitad al mediodía y en la noche, ninguna de 11 p. m. a 5 a. m. (los buses estacionados siguen reportando, vacíos).
 - **`SJB-7090` está fuera de servicio:** reporta una vez y luego aparece como `stale`.
 
-> **Datos ficticios.** Los totales (43 buses, 27 + 16, 10 ramales, ~28 000 pasajeros/día) vienen de la investigación del equipo y no están verificados. Las placas, capacidades (90 troncal, 50 alimentador) y los ramales marcados "por definir" son inventados. Las rutas del archivo solo mueven la simulación: esta API nunca sirve rutas.
+> **Datos ficticios.** Los totales (43 buses, 27 + 16, 10 ramales, ~28 000 pasajeros/día) vienen de la investigación del equipo y no están verificados. Las placas, capacidades (90 troncal, 50 alimentador) y los ramales marcados "por definir" son inventados. Las rutas y paradas del archivo mueven la simulación y alimentan el planificador de viajes; las paradas son sintéticas, no las del operador.
 
 **Recorridos:** siguen calles reales de OpenStreetMap, calculadas con OSRM desde la Parroquia San Isidro Labrador (Coronado) hasta el centro de cada destino; la Ruta 142 va Parque Central (San José) → Guadalupe → Ipís → Coronado. Se aproximan a los recorridos reales del operador, pero no los copian. El trazado completo está en `data/routes/coronado-routes-osm.geojson` (puede verse arrastrándolo a geojson.io). Datos de mapa © colaboradores de OpenStreetMap (ODbL).

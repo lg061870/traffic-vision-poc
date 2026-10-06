@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Innova.Occupancy.Api.Configuration;
 using Innova.Occupancy.Api.Ingestion;
+using Innova.Occupancy.Api.Transit;
 using Innova.Occupancy.Api.Vehicles;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,6 +35,9 @@ builder.Services.AddSingleton<RawAggregator>();
 builder.Services.AddSingleton<IDoorCounterAdapter, ApcDoorEventsV1Adapter>();
 builder.Services.AddSingleton<DoorCounterAdapterRegistry>();
 builder.Services.AddHostedService<MockFleetSimulator>();
+// The Coronado routes and stops, shared by the simulator's buses and the trip planner.
+builder.Services.AddSingleton<TransitNetwork>();
+builder.Services.AddSingleton<TripPlanner>();
 
 // Read access is open while client apps are built against the mock; writes need a device key.
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
@@ -53,8 +57,9 @@ app.MapControllers();
 // On in Development; ClientDemo:Enabled=true turns it on elsewhere (e.g. the demo server).
 if (app.Configuration.GetValue("ClientDemo:Enabled", app.Environment.IsDevelopment()))
 {
-    var page = Path.Combine(app.Environment.ContentRootPath, "ClientDemo", "simulate.html");
-    app.MapGet("/simulate", () => Results.File(page, "text/html; charset=utf-8")).ExcludeFromDescription();
+    var pages = Path.Combine(app.Environment.ContentRootPath, "ClientDemo");
+    app.MapGet("/simulate", () => Results.File(Path.Combine(pages, "simulate.html"), "text/html; charset=utf-8")).ExcludeFromDescription();
+    app.MapGet("/simulateroute", () => Results.File(Path.Combine(pages, "simulateroute.html"), "text/html; charset=utf-8")).ExcludeFromDescription();
 }
 
 if (app.Configuration.GetSection(IngestionOptions.SectionName).Get<IngestionOptions>()?.DeviceKeys.Count is null or 0)
