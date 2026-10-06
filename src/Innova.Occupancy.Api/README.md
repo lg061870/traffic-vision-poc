@@ -6,7 +6,7 @@ Por ahora todo se guarda **en memoria** (se pierde al reiniciar). Un simulador (
 
 > **Ver la API en acción:** abra el **[simulador de cliente](https://lg0618pp-002-site2.htempurl.com/simulate)** (`https://lg0618pp-002-site2.htempurl.com/simulate`). Hace las mismas llamadas que haría su app y muestra cada respuesta, la más reciente arriba. Permite elegir un bus.
 >
-> **Planificar un viaje:** el **[simulador de rutas](https://lg0618pp-002-site2.htempurl.com/simulateroute)** (`https://lg0618pp-002-site2.htempurl.com/simulateroute`) marca origen y destino en un mapa y consulta `GET /api/v1/trips/plan` cada 10 s, como lo haría la app.
+> **Planificar un viaje:** el **[simulador de rutas](https://lg0618pp-002-site2.htempurl.com/simulateroute)** (`https://lg0618pp-002-site2.htempurl.com/simulateroute`) recibe origen y destino como `lat,lon` (trae 10 ejemplos), llama a `GET /api/v1/trips/plan` como lo haría la app y muestra la respuesta.
 
 **Contenido:** [Guía para apps cliente](#guía-para-apps-cliente) · [Ejecutar](#ejecutar) · [Endpoints](#endpoints) · [Convenciones](#convenciones) · [Datos raw](#datos-raw-post-raw) · [Configuración](#configuración) · [Flota simulada](#flota-simulada-autobuses-unidos-de-coronado)
 
@@ -377,7 +377,7 @@ dotnet run --project src/Innova.Occupancy.Api
 - Contrato OpenAPI (para generar tipos en la app): `http://localhost:5189/openapi/v1.json`
 - Ejemplos listos: `Innova.Occupancy.Api.http`
 - Simulador de cliente: [`http://localhost:5189/simulate`](http://localhost:5189/simulate). Consulta los endpoints de lectura igual que una app cliente y muestra cada respuesta, la más reciente arriba. Se puede elegir un bus (`?bus=SJB-15456`): entonces consulta ese bus cada 5 s y su historial y eventos cada 15 s. Activo en Development; en otro ambiente se activa con `ClientDemo:Enabled=true`.
-- Simulador de rutas: [`http://localhost:5189/simulateroute`](http://localhost:5189/simulateroute). Origen y destino en un mapa; consulta `GET /api/v1/trips/plan` cada 10 s y dibuja la mejor opción. Se activa igual que el simulador de cliente.
+- Simulador de rutas: [`http://localhost:5189/simulateroute`](http://localhost:5189/simulateroute). Origen y destino como `lat,lon`, con 10 ejemplos de la línea de Coronado; llama a `GET /api/v1/trips/plan` y muestra la respuesta, la más reciente arriba. Se activa igual que el simulador de cliente.
 
 ## Endpoints
 

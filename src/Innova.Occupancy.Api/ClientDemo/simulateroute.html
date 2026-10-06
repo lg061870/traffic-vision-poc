@@ -4,8 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Simulador de rutas</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
     --bg: #f4f6f9;
@@ -41,66 +39,32 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); }
 
-  header {
-    padding: 12px 16px;
-    background: var(--panel);
-    border-bottom: 1px solid var(--line);
-  }
+  header { padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
   h1 { margin: 0 0 2px; font-size: 18px; }
-  h2 { margin: 0 0 8px; font-size: 15px; }
+  h2 { margin: 16px 0 8px; font-size: 15px; }
   .intro { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
-  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
   label { font-size: 13px; color: var(--muted); }
-  input, select, button {
+  input, button {
     font: inherit;
     font-size: 14px;
     color: var(--text);
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: 6px;
-    padding: 5px 9px;
+    padding: 6px 10px;
   }
-  input.point { width: 190px; font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: 13px; }
+  input.point { width: 200px; font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: 13px; }
   button { cursor: pointer; }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .status { margin-left: auto; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .status .live { color: var(--ok); font-weight: 600; }
-  .status .paused { color: var(--warn); font-weight: 600; }
-  .pick { font-size: 13px; }
-  .pick b { color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 
-  .top {
-    display: grid;
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-    gap: 12px;
-    padding: 12px 16px 0;
-    max-width: 1400px;
-    margin: 0 auto;
-  }
-  #map { height: 520px; border-radius: 8px; border: 1px solid var(--line); }
-  .panel {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 12px;
-    max-height: 520px;
-    overflow-y: auto;
-  }
+  main { padding: 0 16px 40px; max-width: 1100px; margin: 0 auto; }
+  .samples { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+  .sample { text-align: left; padding: 8px 10px; }
+  .sample strong { display: block; font-size: 13px; }
+  .sample code { font-size: 11px; color: var(--muted); }
+
   .empty { color: var(--muted); font-size: 14px; }
-  .message { color: var(--warn); font-size: 14px; }
-
-  .option { border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
-  .option.best { border-color: var(--accent); }
-  .option-head { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; margin-bottom: 6px; }
-  .option-head strong { font-size: 16px; }
-  .leg { display: flex; gap: 8px; font-size: 13px; padding: 4px 0; border-top: 1px dashed var(--line); }
-  .leg:first-of-type { border-top: 0; }
-  .leg .icon { flex: none; width: 20px; text-align: center; }
-  .leg .detail { color: var(--muted); }
-  .badge { display: inline-block; padding: 0 6px; border-radius: 9px; color: #fff; font-size: 11px; font-weight: 600; }
-  .warning { font-size: 12px; color: var(--warn); margin-top: 4px; }
-
-  main { padding: 12px 16px 40px; max-width: 1400px; margin: 0 auto; }
   ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
   .entry { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; animation: flash 1.2s ease-out; }
   @keyframes flash { from { background: var(--flash); } to { background: var(--panel); } }
@@ -129,7 +93,7 @@
   pre {
     margin: 0;
     padding: 10px 12px;
-    max-height: 420px;
+    max-height: 600px;
     overflow: auto;
     background: var(--code-bg);
     border-top: 1px solid var(--line);
@@ -138,19 +102,8 @@
     font-size: 12px;
     line-height: 1.45;
   }
-  .divider { text-align: center; font-size: 12px; color: var(--muted); padding: 2px 0; }
 
-  .pin { width: 26px; height: 26px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid #fff;
-         box-shadow: 0 1px 3px rgb(0 0 0 / 0.4); display: grid; place-items: center; }
-  .pin span { transform: rotate(45deg); color: #fff; font-weight: 700; font-size: 13px; }
-  .bus-now { background: #1f6feb; color: #fff; border: 2px solid #fff; border-radius: 10px; padding: 1px 6px; font-size: 11px;
-             font-weight: 700; white-space: nowrap; box-shadow: 0 1px 3px rgb(0 0 0 / 0.4); }
-
-  @media (max-width: 900px) {
-    .top { grid-template-columns: 1fr; }
-    #map { height: 380px; }
-    .panel { max-height: none; }
-    .status { margin-left: 0; width: 100%; }
+  @media (max-width: 640px) {
     .entry summary { grid-template-columns: 64px 38px minmax(0, 1fr); }
     .meta { grid-column: 3; text-align: left; }
     .summary-text { grid-column: 1 / 4; }
@@ -161,231 +114,91 @@
 <header>
   <h1>Simulador de rutas · Occupancy API</h1>
   <p class="intro">
-    Elija un origen y un destino en el mapa, o escriba <code>lat,lon</code>. La página consulta
-    <code>GET /api/v1/trips/plan</code> igual que lo haría una app, con los buses en vivo de la línea de Coronado,
-    y muestra la respuesta más reciente arriba.
+    Escriba el origen y el destino como <code>lat,lon</code>, o elija un ejemplo, y presione <b>Consultar</b>.
+    La página llama a <code>GET /api/v1/trips/plan</code> igual que lo haría una app, con los buses en vivo de la línea de Coronado,
+    y muestra la respuesta tal cual; la más reciente queda arriba.
   </p>
-  <div class="controls">
-    <label>Origen (A) <input id="from" class="point" placeholder="lat,lon" /></label>
-    <label>Destino (B) <input id="to" class="point" placeholder="lat,lon" /></label>
+  <form class="controls" id="form">
+    <label>Origen (from) <input id="from" class="point" placeholder="9.9620,-84.0300" required /></label>
+    <label>Destino (to) <input id="to" class="point" placeholder="9.9330,-84.0790" required /></label>
     <button id="swap" type="button" title="Intercambiar origen y destino">⇄</button>
-    <label>Ejemplo
-      <select id="preset">
-        <option value="">—</option>
-        <option value="9.9620,-84.0300|9.9330,-84.0790">Ipís → San José centro</option>
-        <option value="9.9330,-84.0790|9.98822,-83.960535">San José → Las Nubes (transbordo)</option>
-        <option value="9.9843,-84.0154|9.9620,-84.0300">Dulce Nombre → Ipís (transbordo)</option>
-        <option value="10.0377,-83.9298|9.9735,-84.0264">Cascajal → Patalillo (transbordo)</option>
-        <option value="9.9330,-84.0790|9.9360,-84.0770">San José, distancia corta</option>
-      </select>
-    </label>
-    <label>Cada
-      <select id="interval">
-        <option value="5000">5 s</option>
-        <option value="10000" selected>10 s</option>
-        <option value="30000">30 s</option>
-      </select>
-    </label>
-    <button id="toggle" class="primary" type="button">Pausar</button>
-    <button id="clear" type="button">Limpiar registro</button>
-    <span class="status" id="status"></span>
-  </div>
+    <button class="primary" type="submit">Consultar</button>
+    <button id="clear" type="button">Limpiar</button>
+  </form>
 </header>
 
-<section class="top">
-  <div>
-    <div id="map"></div>
-    <p class="pick" id="pick"></p>
-  </div>
-  <div class="panel">
-    <h2>Opciones ahora</h2>
-    <div id="options"><p class="empty">Elija origen y destino.</p></div>
-  </div>
-</section>
-
 <main>
-  <h2>Respuestas de la API</h2>
+  <h2>Ejemplos</h2>
+  <div class="samples" id="samples"></div>
+
+  <h2>Respuestas</h2>
+  <p class="empty" id="empty">Todavía no hay consultas.</p>
   <ol id="log"></ol>
 </main>
 
 <script>
-  const maxEntries = 200
-  const statusLabels = {
-    EMPTY: ['Vacío', '#2e9e5b'],
-    MANY_SEATS_AVAILABLE: ['Muchos asientos', '#5bb34a'],
-    FEW_SEATS_AVAILABLE: ['Pocos asientos', '#d9a400'],
-    STANDING_ROOM_ONLY: ['Solo de pie', '#e8730c'],
-    CRUSHED_STANDING_ROOM_ONLY: ['Muy lleno', '#d1352b'],
-    FULL: ['Lleno', '#8e1b2c'],
-  }
+  // Origins and destinations along the Coronado line; the ones marked "transbordo" change buses at the terminal.
+  const samples = [
+    ['Ipís → San José centro', '9.9620,-84.0300', '9.9330,-84.0790'],
+    ['San José centro → Guadalupe', '9.9330,-84.0790', '9.9480,-84.0560'],
+    ['Guadalupe → Terminal de Coronado', '9.9480,-84.0560', '9.9761,-84.0073'],
+    ['Terminal de Coronado → San José centro', '9.9761,-84.0073', '9.9330,-84.0790'],
+    ['San José centro → Las Nubes (transbordo)', '9.9330,-84.0790', '9.9882,-83.9605'],
+    ['Dulce Nombre → Ipís (transbordo)', '9.9843,-84.0154', '9.9620,-84.0300'],
+    ['Cascajal → Patalillo (transbordo)', '10.0377,-83.9298', '9.9735,-84.0264'],
+    ['Patio de Agua → San José centro (transbordo)', '9.9759,-83.9664', '9.9330,-84.0790'],
+    ['San Rafael → Guadalupe (transbordo)', '9.9807,-83.9918', '9.9480,-84.0560'],
+    ['San José centro, distancia corta (a pie)', '9.9330,-84.0790', '9.9360,-84.0770'],
+  ]
 
   const fromInput = document.getElementById('from')
   const toInput = document.getElementById('to')
-  const intervalSelect = document.getElementById('interval')
-  const toggleButton = document.getElementById('toggle')
-  const optionsBox = document.getElementById('options')
   const log = document.getElementById('log')
-  const status = document.getElementById('status')
-  const pick = document.getElementById('pick')
+  const empty = document.getElementById('empty')
 
-  let running = true
-  let timer = null
-  let generation = 0
-  let calls = 0
-  let picking = 'from'
-
-  // ---- Map ----
-
-  const map = L.map('map').setView([9.965, -84.02], 13)
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  }).addTo(map)
-
-  const pinIcon = (letter, color) => L.divIcon({
-    className: '',
-    html: `<div class="pin" style="background:${color}"><span>${letter}</span></div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-  })
-  const markers = {
-    from: L.marker([0, 0], { draggable: true, icon: pinIcon('A', '#1a7f37') }),
-    to: L.marker([0, 0], { draggable: true, icon: pinIcon('B', '#c0362c') }),
-  }
-  const planLayer = L.layerGroup().addTo(map)
-
-  for (const which of ['from', 'to']) {
-    markers[which].on('dragend', () => {
-      const { lat, lng } = markers[which].getLatLng()
-      setPoint(which, `${lat.toFixed(5)},${lng.toFixed(5)}`)
+  for (const [name, from, to] of samples) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = 'sample'
+    const title = document.createElement('strong')
+    title.textContent = name
+    const coords = document.createElement('code')
+    coords.textContent = `${from} → ${to}`
+    button.append(title, coords)
+    button.addEventListener('click', () => {
+      fromInput.value = from
+      toInput.value = to
+      plan()
     })
+    document.getElementById('samples').append(button)
   }
-
-  map.on('click', (event) => {
-    setPoint(picking, `${event.latlng.lat.toFixed(5)},${event.latlng.lng.toFixed(5)}`)
-    picking = picking === 'from' ? 'to' : 'from'
-    updatePick()
-  })
-
-  function updatePick() {
-    pick.innerHTML = `Clic en el mapa para fijar el <b>${picking === 'from' ? 'origen (A)' : 'destino (B)'}</b>. Puede arrastrar A y B.`
-  }
-
-  function parsePoint(text) {
-    const match = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(text ?? '')
-    return match ? [Number(match[1]), Number(match[2])] : null
-  }
-
-  function setPoint(which, text, { restart = true } = {}) {
-    const input = which === 'from' ? fromInput : toInput
-    input.value = text
-    const point = parsePoint(text)
-    if (point) {
-      markers[which].setLatLng(point).addTo(map)
-    } else {
-      markers[which].remove()
-    }
-    syncAddress()
-    if (restart) restartPolling()
-  }
-
-  // ---- Showing a plan ----
-
-  function localTime(iso) {
-    return new Date(iso).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Costa_Rica' })
-  }
-
-  function badge(statusName) {
-    const [label, color] = statusLabels[statusName] ?? [statusName ?? 'Sin datos', '#9aa0a6']
-    return `<span class="badge" style="background:${color}">${label}</span>`
-  }
-
-  function escapeHtml(text) {
-    return String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
-  }
-
-  function legHtml(leg) {
-    if (leg.type === 'WALK') {
-      return `<div class="leg"><span class="icon">🚶</span><span>Camine ${leg.meters} m (${Math.round(leg.minutes)} min) hasta <b>${escapeHtml(leg.to.name)}</b></span></div>`
-    }
-    const bus = leg.bus
-    const vehicle = bus.vehicle
-    const occupancy = vehicle.passengerCount != null ? `${vehicle.passengerCount}/${vehicle.capacity} ${badge(vehicle.status)}` : badge(null)
-    const later = bus.laterBuses.length
-      ? `Después: ${bus.laterBuses.map((b) => `${escapeHtml(b.vehicleId)} ${localTime(b.arriveAt)}`).join(', ')}`
-      : 'No hay otro bus en la próxima hora.'
-    return `<div class="leg"><span class="icon">🚌</span><span>
-      <b>${escapeHtml(bus.routeName)}</b> hacia ${escapeHtml(bus.headsign)}: bus <b>${escapeHtml(bus.vehicleId)}</b>
-      pasa por ${escapeHtml(leg.from.name)} a las <b>${localTime(leg.departAt)}</b> (espera ${Math.round(bus.waitMinutes)} min) · ${occupancy}<br>
-      <span class="detail">Hoy está a ${(vehicle.distanceToStopMeters / 1000).toFixed(1)} km de la parada${vehicle.speedKmh ? `, a ${vehicle.speedKmh} km/h` : ', detenido'}.
-      Viaje de ${bus.stops} paradas, ${Math.round(leg.minutes)} min, hasta ${escapeHtml(leg.to.name)}. ${later}</span></span></div>`
-  }
-
-  function renderPlan(plan) {
-    if (!plan.options.length) {
-      optionsBox.innerHTML = `<p class="message">${escapeHtml(plan.message ?? 'Sin opciones.')}</p>`
-      return
-    }
-    optionsBox.innerHTML = plan.options.map((option, index) => `
-      <div class="option${index === 0 ? ' best' : ''}">
-        <div class="option-head">
-          <span><strong>${Math.round(option.durationMinutes)} min</strong> · llegada ${localTime(option.arriveAt)}</span>
-          <span>${option.transfers ? `${option.transfers} transbordo` : 'directo'}${index === 0 ? ' · mejor' : ''}</span>
-        </div>
-        ${option.legs.map(legHtml).join('')}
-        ${option.warnings.map((w) => `<div class="warning">⚠ ${escapeHtml(w)}</div>`).join('')}
-      </div>`).join('')
-  }
-
-  function drawPlan(plan) {
-    planLayer.clearLayers()
-    const best = plan.options[0]
-    if (!best) return
-    for (const leg of best.legs) {
-      if (leg.type === 'WALK') {
-        L.polyline([[leg.from.lat, leg.from.lon], [leg.to.lat, leg.to.lon]], { color: '#667085', weight: 3, dashArray: '6 6' }).addTo(planLayer)
-        continue
-      }
-      L.polyline(leg.bus.path.map((p) => [p.lat, p.lon]), { color: '#1f6feb', weight: 6, opacity: 0.85 }).addTo(planLayer)
-      for (const stop of [leg.from, leg.to]) {
-        L.circleMarker([stop.lat, stop.lon], { radius: 7, color: '#fff', weight: 2, fillColor: '#1f6feb', fillOpacity: 1 })
-          .bindTooltip(escapeHtml(stop.name)).addTo(planLayer)
-      }
-      const where = leg.bus.vehicle.location
-      L.marker([where.lat, where.lon], {
-        icon: L.divIcon({ className: '', html: `<div class="bus-now">🚌 ${escapeHtml(leg.bus.vehicleId)}</div>`, iconSize: null }),
-        zIndexOffset: 1000,
-      }).bindTooltip('Dónde está ahora el bus recomendado').addTo(planLayer)
-    }
-  }
-
-  function summarize(plan) {
-    if (!plan?.options) return plan?.title ?? ''
-    const best = plan.options[0]
-    if (!best) return plan.message ?? 'Sin opciones'
-    const buses = best.legs.filter((leg) => leg.type === 'BUS')
-      .map((leg) => `${leg.bus.vehicleId} (${leg.bus.routeName}) ${localTime(leg.departAt)}`)
-    return `${plan.options.length} opción(es) · mejor: ${Math.round(best.durationMinutes)} min, llegada ${localTime(best.arriveAt)}` +
-      (buses.length ? ` · ${buses.join(' → ')}` : ' · a pie')
-  }
-
-  // ---- Log (same idea as /simulate) ----
 
   function time(date) {
     return date.toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
   }
 
-  function addDivider(text) {
-    const item = document.createElement('li')
-    item.className = 'divider'
-    item.textContent = `— ${text} · ${time(new Date())} —`
-    log.prepend(item)
+  function localTime(iso) {
+    return new Date(iso).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Costa_Rica' })
+  }
+
+  // One line saying what the response contains; the JSON below is the response as is.
+  function summarize(body) {
+    if (!body?.options) return body?.title ?? ''
+    const best = body.options[0]
+    if (!best) return body.message ?? 'Sin opciones'
+    const buses = best.legs.filter((leg) => leg.type === 'BUS')
+      .map((leg) => `${leg.bus.vehicleId} (${leg.bus.routeName}) pasa ${localTime(leg.departAt)}`)
+    return `${body.options.length} opción(es) · mejor: ${Math.round(best.durationMinutes)} min, llegada ${localTime(best.arriveAt)}` +
+      (buses.length ? ` · ${buses.join(' → ')}` : ' · a pie')
   }
 
   function addEntry({ at, url, code, codeText, ms, bytes, body, error }) {
+    empty.hidden = true
+    for (const open of log.querySelectorAll('details[open]')) open.open = false
     const item = document.createElement('li')
     const details = document.createElement('details')
     details.className = 'entry'
+    details.open = true
     const summary = document.createElement('summary')
     for (const [className, text] of [['time', time(at)], ['method', 'GET'], ['url', url]]) {
       const span = document.createElement('span')
@@ -406,117 +219,51 @@
     summary.append(text)
     details.append(summary)
     if (body != null) {
-      details.addEventListener('toggle', () => {
-        if (details.open && !details.querySelector('pre')) {
-          const pre = document.createElement('pre')
-          pre.textContent = JSON.stringify(body, null, 2)
-          details.append(pre)
-        }
-      })
+      const pre = document.createElement('pre')
+      pre.textContent = JSON.stringify(body, null, 2)
+      details.append(pre)
     }
     item.append(details)
     log.prepend(item)
-    while (log.children.length > maxEntries) log.lastElementChild.remove()
+    while (log.children.length > 50) log.lastElementChild.remove()
   }
 
-  // ---- Polling ----
-
-  async function poll(myGeneration) {
-    const from = parsePoint(fromInput.value)
-    const to = parsePoint(toInput.value)
-    if (!from || !to) return
-    const url = `/api/v1/trips/plan?from=${from.join(',')}&to=${to.join(',')}`
+  async function plan() {
+    const from = fromInput.value.replace(/\s/g, '')
+    const to = toInput.value.replace(/\s/g, '')
+    const url = `/api/v1/trips/plan?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
     const at = new Date()
     const started = performance.now()
-    calls++
     try {
       const response = await fetch(url, { headers: { Accept: 'application/json' } })
       const raw = await response.text()
       let body = null
       try { body = raw ? JSON.parse(raw) : null } catch { body = { raw } }
-      addEntry({ at, url, code: response.status, codeText: response.statusText, ms: Math.round(performance.now() - started), bytes: new Blob([raw]).size, body })
-      if (myGeneration === generation) {
-        if (response.ok) {
-          renderPlan(body)
-          drawPlan(body)
-        } else {
-          optionsBox.innerHTML = `<p class="message">${escapeHtml(body?.title ?? `HTTP ${response.status}`)}</p>`
-        }
-      }
+      addEntry({ at, url: decodeURIComponent(url), code: response.status, codeText: response.statusText, ms: Math.round(performance.now() - started), bytes: new Blob([raw]).size, body })
     } catch (error) {
-      addEntry({ at, url, ms: Math.round(performance.now() - started), error: `Error de red: ${error.message}` })
-    }
-    updateStatus()
-    if (running && myGeneration === generation) {
-      timer = setTimeout(() => poll(myGeneration), Number(intervalSelect.value))
+      addEntry({ at, url: decodeURIComponent(url), ms: Math.round(performance.now() - started), error: `Error de red: ${error.message}` })
     }
   }
 
-  function restartPolling() {
-    generation++
-    clearTimeout(timer)
-    planLayer.clearLayers()
-    if (!parsePoint(fromInput.value) || !parsePoint(toInput.value)) {
-      optionsBox.innerHTML = '<p class="empty">Elija origen y destino.</p>'
-      updateStatus()
-      return
-    }
-    addDivider(`${fromInput.value} → ${toInput.value}`)
-    optionsBox.innerHTML = '<p class="empty">Consultando…</p>'
-    if (running) poll(generation)
-  }
-
-  function updateStatus() {
-    const state = running ? '<span class="live">● consultando</span>' : '<span class="paused">❚❚ en pausa</span>'
-    status.innerHTML = `${state} · ${calls} llamadas`
-  }
-
-  function syncAddress() {
-    const url = new URL(location.href)
-    for (const [key, input] of [['from', fromInput], ['to', toInput]]) {
-      if (parsePoint(input.value)) url.searchParams.set(key, input.value.replace(/\s/g, ''))
-      else url.searchParams.delete(key)
-    }
-    history.replaceState(null, '', url)
-  }
-
-  fromInput.addEventListener('change', () => setPoint('from', fromInput.value))
-  toInput.addEventListener('change', () => setPoint('to', toInput.value))
+  document.getElementById('form').addEventListener('submit', (event) => {
+    event.preventDefault()
+    plan()
+  })
   document.getElementById('swap').addEventListener('click', () => {
-    const from = fromInput.value
-    setPoint('from', toInput.value, { restart: false })
-    setPoint('to', from)
+    [fromInput.value, toInput.value] = [toInput.value, fromInput.value]
   })
-  document.getElementById('preset').addEventListener('change', (event) => {
-    if (!event.target.value) return
-    const [from, to] = event.target.value.split('|')
-    setPoint('from', from, { restart: false })
-    setPoint('to', to)
-    map.fitBounds([parsePoint(from), parsePoint(to)], { padding: [40, 40] })
-    event.target.value = ''
+  document.getElementById('clear').addEventListener('click', () => {
+    log.replaceChildren()
+    empty.hidden = false
   })
-  intervalSelect.addEventListener('change', () => running && restartPolling())
-  toggleButton.addEventListener('click', () => {
-    running = !running
-    toggleButton.textContent = running ? 'Pausar' : 'Reanudar'
-    toggleButton.classList.toggle('primary', running)
-    if (running) restartPolling()
-    else { generation++; clearTimeout(timer); addDivider('En pausa') }
-    updateStatus()
-  })
-  document.getElementById('clear').addEventListener('click', () => log.replaceChildren())
 
-  // A shared address (?from=…&to=…) opens on that trip.
+  // A shared address (?from=…&to=…) fills the form and asks right away.
   const params = new URL(location.href).searchParams
-  if (params.get('from')) setPoint('from', params.get('from'), { restart: false })
-  if (params.get('to')) setPoint('to', params.get('to'), { restart: false })
-  const start = parsePoint(fromInput.value)
-  const end = parsePoint(toInput.value)
-  if (start && end) map.fitBounds([start, end], { padding: [40, 40] })
-  if (start && !end) picking = 'to'
-  updatePick()
-  updateStatus()
-  restartPolling()
+  if (params.get('from') && params.get('to')) {
+    fromInput.value = params.get('from')
+    toInput.value = params.get('to')
+    plan()
+  }
 </script>
 </body>
 </html>
