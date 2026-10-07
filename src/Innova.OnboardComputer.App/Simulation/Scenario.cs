@@ -67,8 +67,10 @@ public sealed record ScriptedDoorEvent(TimeSpan At, int Door, string Type, int? 
 
 /// <summary>
 /// Synthetic results of the vision inference API: one detection per passenger the camera can see,
-/// with a few deterministic misses so the API's median filter has something to smooth.
+/// with a few deterministic misses so the API's median filter has something to smooth. When
+/// <see cref="Recording"/> is set, the real detections of that analyzed clip are sent instead.
 /// </summary>
+/// <param name="Recording">A TrafficVision ".result.json", relative to the scenario file.</param>
 public sealed record VisionScenario(
     string Model,
     string Camera,
@@ -76,4 +78,5 @@ public sealed record VisionScenario(
     int SeatsInView = 14,
     int MaxVisible = 30,
     double MissRate = 0.05,
-    int Seed = 1);
+    int Seed = 1,
+    string? Recording = null);

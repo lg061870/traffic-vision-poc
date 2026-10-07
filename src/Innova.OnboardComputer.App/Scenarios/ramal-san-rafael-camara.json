@@ -1,0 +1,40 @@
+// The camera demo bus: Ramal San Rafael (R142-05) like ramal-san-rafael.json, but with no door
+// counter, and the cabin camera sends what the vision model really detected in an analyzed clip
+// (data/demo/results, copied to Scenarios/recordings on build). The bus's count therefore comes
+// from the model. The clip loops on the Unix clock, so the dashboard can play the same moment.
+{
+  "name": "Ramal San Rafael (R142-05) con cámara grabada: terminal de Coronado → San Rafael → terminal",
+  "routesFile": "coronado-routes-osm.geojson",
+  "routeId": "R142-05",
+  "duration": "00:20:00",
+  "gps": {
+    "intervalSeconds": 1,
+    "track": [
+      { "at": "00:00:00", "km": 0 },
+      { "at": "00:00:55", "km": 0 },
+      { "at": "00:02:45", "km": 0.6 },
+      { "at": "00:03:15", "km": 0.6 },
+      { "at": "00:05:05", "km": 1.2 },
+      { "at": "00:05:33", "km": 1.2 },
+      { "at": "00:07:23", "km": 1.8 },
+      { "at": "00:07:50", "km": 1.8 },
+      { "at": "00:09:30", "km": 2.34 },
+      { "at": "00:10:10", "km": 2.34 },
+      { "at": "00:11:50", "km": 1.8 },
+      { "at": "00:12:15", "km": 1.8 },
+      { "at": "00:14:05", "km": 1.2 },
+      { "at": "00:14:33", "km": 1.2 },
+      { "at": "00:16:23", "km": 0.6 },
+      { "at": "00:16:50", "km": 0.6 },
+      { "at": "00:18:40", "km": 0 },
+      { "at": "00:20:00", "km": 0 }
+    ]
+  },
+  "doorEvents": [],
+  "vision": {
+    "model": "bus-passengers-rfdetr-s-v1",
+    "camera": "cabin-front",
+    "frameIntervalSeconds": 1,
+    "recording": "recordings/la_bus_highlights.mp4.result.json"
+  }
+}

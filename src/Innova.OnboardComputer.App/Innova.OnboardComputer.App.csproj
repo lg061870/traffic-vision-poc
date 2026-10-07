@@ -16,6 +16,8 @@
   <ItemGroup>
     <None Update="Scenarios\**\*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\data\routes\coronado-routes-osm.geojson" Link="Scenarios\coronado-routes-osm.geojson" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Analyzed demo clips (not in Git; see data/demo/README.md) for the recorded-camera scenario. -->
+    <None Include="..\..\data\demo\results\*.result.json" Link="Scenarios\recordings\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -51,6 +51,17 @@ Un escenario es un archivo JSON con un viaje guionizado. **Todas las horas son d
 
 El escenario incluido, `Scenarios/ramal-san-rafael.json`, es una vuelta de 20 minutos del Ramal San Rafael (R142-05): terminal de Coronado → San Rafael → terminal, con tres paradas por sentido. Los abordajes y las salidas suman lo mismo, así que puede repetirse sin que el conteo se desvíe.
 
+### Cámara grabada: el conteo sale del modelo real
+
+`Scenarios/ramal-san-rafael-camara.json` hace el mismo recorrido, pero **sin contador de puertas**, y la cámara de cabina envía lo que el modelo de visión **detectó de verdad** en un clip ya analizado (`vision.recording`, un `.result.json` de TrafficVision). Así el conteo de `SJB-10662` en la API viene del modelo (`source: CABIN_CAMERA`). Solo se envían las detecciones confirmadas, como en la app de visión.
+
+- Los resultados salen de `data/demo/results` (fuera de Git, ver `data/demo/README.md`) y se copian a `Scenarios/recordings` al compilar.
+- El clip se repite sobre el **reloj Unix**: en cada momento va por el segundo *(hora Unix mod duración del clip)*. El panel del operador reproduce el video con ese mismo reloj, así que las cajas en pantalla y el conteo que recibe la API corresponden al mismo momento.
+
+```powershell
+dotnet run --project src/Innova.OnboardComputer.App --launch-profile camara-grabada
+```
+
 ## Dispositivos reales
 
 Solo cambian las fuentes. Hoy `Program.cs` registra `BufferedGpsSource`, `BufferedDoorCounterSource` y `BufferedVisionSource`, que el reproductor del escenario alimenta. Para un dispositivo real se registra otra implementación de `IGpsSource` (por ejemplo, un lector de puerto serie que entrega cada línea NMEA), `IDoorCounterSource` (con su `Format`; otro fabricante necesita también su adaptador en la API) o `IVisionSource` (cliente de la API de inferencia). El resto de la app no cambia. Con `Simulation:Enabled=false` y sin adaptadores reales, la app arranca pero no envía nada.

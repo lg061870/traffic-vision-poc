@@ -41,10 +41,13 @@ if (settings.Simulation.Enabled)
         var file = Path.Combine(AppContext.BaseDirectory, settings.Simulation.ScenarioFile);
         var scenario = Scenario.Load(file);
         var route = RoutePath.Load(Path.Combine(Path.GetDirectoryName(file)!, scenario.RoutesFile), scenario.RouteId);
+        var recording = scenario.Vision.Recording is { Length: > 0 } recordingFile
+            ? RecordedVision.Load(Path.Combine(Path.GetDirectoryName(file)!, recordingFile))
+            : null;
         var now = services.GetRequiredService<TimeProvider>().GetUtcNow();
         // Minute 0 of the scenario is now, to the whole second so NMEA times read cleanly.
         var epoch = new DateTimeOffset(now.Ticks - (now.Ticks % TimeSpan.TicksPerSecond), TimeSpan.Zero);
-        return new ScenarioTimeline(scenario, route, epoch, settings.Simulation.Loop);
+        return new ScenarioTimeline(scenario, route, epoch, settings.Simulation.Loop, recording);
     });
     builder.Services.AddSingleton(services =>
     {

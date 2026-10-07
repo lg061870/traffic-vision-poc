@@ -23,10 +23,13 @@ public sealed class ScenarioTimeline
     private readonly IReadOnlyList<(TimeSpan At, double Lat, double Lon, double SpeedKmh, double Course)> _gps;
     private readonly IReadOnlyList<ScriptedDoorEvent> _doorEvents;
     private readonly IReadOnlyList<(TimeSpan At, int Index, int OnBoard)> _frames;
+    private readonly RecordedVision? _recording;
 
-    public ScenarioTimeline(Scenario scenario, RoutePath route, DateTimeOffset epoch, bool loop)
+    /// <param name="recording">Real detections from a recorded clip, used instead of synthetic ones.</param>
+    public ScenarioTimeline(Scenario scenario, RoutePath route, DateTimeOffset epoch, bool loop, RecordedVision? recording = null)
     {
         _scenario = scenario;
+        _recording = recording;
         Epoch = epoch;
         Loop = loop;
         _doorEvents = scenario.DoorEvents.OrderBy(item => item.At).ToArray();
@@ -40,7 +43,7 @@ public sealed class ScenarioTimeline
 
     public TimeSpan Duration => _scenario.Duration;
 
-    public string VisionModel => _scenario.Vision.Model;
+    public string VisionModel => _recording?.Model ?? _scenario.Vision.Model;
 
     public string VisionCamera => _scenario.Vision.Camera;
 
@@ -66,8 +69,17 @@ public sealed class ScenarioTimeline
                 .Select(item => new GpsSample(start + item.At, item.Lat, item.Lon, item.SpeedKmh, item.Course)));
             doors.AddRange(_doorEvents.Where(item => InWindow(item.At))
                 .Select(item => new RawDoorCounterEvent(item.Door, item.Type, start + item.At, item.In, item.Out)));
-            frames.AddRange(_frames.Where(item => InWindow(item.At))
-                .Select(item => new RawVisionFrame(start + item.At, Detect(item.OnBoard, pass, item.Index))));
+            if (_recording is null)
+            {
+                frames.AddRange(_frames.Where(item => InWindow(item.At))
+                    .Select(item => new RawVisionFrame(start + item.At, Detect(item.OnBoard, pass, item.Index))));
+            }
+        }
+
+        // A recorded clip keeps its own loop, anchored to the Unix epoch rather than to the scenario.
+        if (_recording is not null)
+        {
+            frames.AddRange(_recording.Between(from < Epoch ? Epoch.AddTicks(-1) : from, to));
         }
 
         return new ScenarioBatch(gps, doors, frames);
