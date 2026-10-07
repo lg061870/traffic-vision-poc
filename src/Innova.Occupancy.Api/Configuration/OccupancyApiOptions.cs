@@ -66,6 +66,14 @@ public sealed class MockFleetOptions
     public int WarmUpMinutes { get; set; } = 60;
 
     /// <summary>
+    /// Costa Rica time of day (e.g. "05:00") from which the startup replay simulates today, so a
+    /// restarted API still has the whole day for GET /fleet/hourly. The per-bus history and events
+    /// endpoints still start at <see cref="WarmUpMinutes"/>. A startup before this time replays the
+    /// previous service day instead. Empty, or an override hour, replay only the warm-up.
+    /// </summary>
+    public string? BackfillFrom { get; set; }
+
+    /// <summary>
     /// Costa Rica time of day (e.g. "07:30") whose demand the fleet follows regardless of the clock,
     /// to show rush hour at any time. Empty follows the real clock.
     /// </summary>

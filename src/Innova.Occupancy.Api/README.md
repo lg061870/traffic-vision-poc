@@ -63,6 +63,7 @@ sequenceDiagram
 | Gráfico de ocupación de un bus | `GET /api/v1/vehicles/{placa}/history` | 15–60 s, solo con el detalle abierto |
 | Subidas y bajadas de un bus | `GET /api/v1/vehicles/{placa}/events?since=` | 15–30 s, solo con el detalle abierto |
 | Cómo llegar de A a B | `GET /api/v1/trips/plan?from=lat,lon&to=lat,lon` | Al pedir la ruta y cada 10–15 s mientras el usuario va a la parada |
+| Indicadores del día (panel del operador) | `GET /api/v1/fleet/hourly` | 60 s |
 
 Para ver estas llamadas en vivo, abra el [simulador de cliente](https://lg0618pp-002-site2.htempurl.com/simulate).
 
@@ -314,6 +315,28 @@ Devuelve `vehicleId` y una lista `events`, del más viejo al más nuevo:
 | `closedAt` | fecha y hora | Cuándo se cerró |
 | `occupancyAfter` | entero o vacío | Pasajeros a bordo al cerrar la puerta |
 
+#### `GET /api/v1/fleet/hourly`
+
+Totales por bus y por hora, solo con lo que reportaron los buses. Las tarifas y los costos no se conocen aquí: el panel del operador los aplica sobre estos totales.
+
+| Parámetro | Por defecto | Qué es |
+|---|---|---|
+| `from` | medianoche de hoy en Costa Rica | Inicio, en ISO-8601 |
+| `to` | ahora | Fin, en ISO-8601. Rango máximo 24 horas |
+
+Devuelve `from`, `to` y una lista `buses`, cada uno con `vehicleId`, `routeId` (la ruta en que está registrado), `capacity` y una lista `hours`:
+
+| Campo | Tipo | Qué es |
+|---|---|---|
+| `hour` | fecha y hora | Inicio de la hora (UTC; las horas de Costa Rica empiezan en los mismos momentos) |
+| `routeId` | texto o vacío | Ruta que hizo en esa hora, si la reportó |
+| `source` | texto o vacío | Fuente de su último conteo en esa hora |
+| `serviceSeconds` | entero | Segundos en servicio. No cuentan el tiempo estacionado ni los huecos de más de 60 s sin reporte |
+| `boardings`, `alightings` | entero | Personas que subieron y bajaron (puertas cerradas en esa hora) |
+| `averagePercent` | entero | Ocupación promedio mientras estuvo en servicio |
+| `peakPercent` | entero | Ocupación máxima |
+| `secondsByBand` | 11 enteros | Segundos en servicio con 0–9 %, 10–19 % … 90–99 % y 100 % o más de ocupación |
+
 #### `GET /api/v1/trips/plan`
 
 Opciones para ir de `from` a `to` en la línea de Coronado, la mejor primero. Cada opción combina caminatas y buses **específicos** (con placa y ocupación en vivo), con a lo sumo un transbordo (en la práctica, en la terminal de Coronado). Solo se ofrece un bus si el usuario alcanza a caminar hasta la parada, con margen, antes de que pase.
@@ -438,6 +461,7 @@ Ejemplo completo en `Innova.Occupancy.Api.http`.
 | `MockFleet:Enabled` | Activa la flota simulada (ver abajo). Desactivar cuando haya dispositivos reales. |
 | `MockFleet:FleetFile` | Archivo con la flota y los corredores simulados (`MockData/coronado-fleet.json`). |
 | `MockFleet:WarmUpMinutes` | Minutos simulados al arrancar, para que la ocupación, los eventos y el historial ya tengan datos (60). |
+| `MockFleet:BackfillFrom` | Hora de Costa Rica desde la que se simula el día al arrancar (`05:00`), para que un reinicio no deje vacío `GET /api/v1/fleet/hourly`. Esas horas **solo** alimentan ese endpoint: `/history` y `/events` siguen empezando en `WarmUpMinutes`. Si arranca antes de esa hora (de madrugada), simula el día de servicio anterior. Vacío o con `TimeOfDayOverride`, solo se simula `WarmUpMinutes`. |
 | `MockFleet:TimeOfDayOverride` | Hora de Costa Rica cuya demanda se simula, por ejemplo `07:30`, para mostrar la hora pico en cualquier momento. Vacío = reloj real. |
 | `Ingestion:DeviceKeys:{vehicleId}` | Llave de cada bus, enviada en el header `X-Device-Key`. Si no hay llaves configuradas, cualquiera puede enviar observaciones: solo para desarrollo. |
 | `OccupancyApi:HistoryRetentionHours` | Horas de historial en memoria (24). |

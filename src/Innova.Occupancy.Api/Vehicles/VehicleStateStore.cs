@@ -14,13 +14,26 @@ public sealed class VehicleStateStore(IOptions<OccupancyApiOptions> options, Tim
     private readonly OccupancyApiOptions _options = options.Value;
     private readonly ConcurrentDictionary<string, VehicleRecord> _vehicles = new(StringComparer.Ordinal);
 
-    public void Apply(string vehicleId, VehicleObservation observation)
+    /// <param name="backfill">
+    /// Simulated history from before the API started. It only feeds the fleet totals; the
+    /// per-bus history and events endpoints never return it, so their answers stay as they were.
+    /// </param>
+    public void Apply(string vehicleId, VehicleObservation observation, bool backfill = false)
     {
         var receivedAt = time.GetUtcNow();
         var record = _vehicles.GetOrAdd(vehicleId, id => new VehicleRecord(id));
 
         lock (record)
         {
+            if (backfill)
+            {
+                // Hours before startup are only history: the bus's current state stays untouched,
+                // so clients never see an earlier hour's position while the replay runs.
+                AddHistory(record, observation, backfill: true);
+                Trim(record, receivedAt);
+                return;
+            }
+
             record.LastSeen = receivedAt;
             if (observation.Device is { } device)
             {
@@ -51,26 +64,39 @@ public sealed class VehicleStateStore(IOptions<OccupancyApiOptions> options, Tim
                         reading.Source,
                         observation.Timestamp);
                 }
-
-                record.History.Add(new HistoryEntry(observation.Timestamp, reading.PassengerCount, reading.Capacity));
             }
 
-            var doorEvents = observation.DoorEvents ?? [];
-            for (var index = 0; index < doorEvents.Count; index++)
-            {
-                var doorEvent = doorEvents[index];
-                var isLastInMessage = index == doorEvents.Count - 1;
-                record.Events.Add(new VehicleDoorEvent(
-                    doorEvent.Door,
-                    doorEvent.Boardings,
-                    doorEvent.Alightings,
-                    observation.Location,
-                    doorEvent.OpenedAt,
-                    doorEvent.ClosedAt,
-                    isLastInMessage ? observation.Occupancy?.PassengerCount : null));
-            }
-
+            AddHistory(record, observation, backfill: false);
             Trim(record, receivedAt);
+        }
+    }
+
+    private static void AddHistory(VehicleRecord record, VehicleObservation observation, bool backfill)
+    {
+        if (observation.Occupancy is { } reading)
+        {
+            record.History.Add(new HistoryEntry(
+                observation.Timestamp,
+                reading.PassengerCount,
+                reading.Capacity,
+                reading.Source,
+                observation.Trip?.RouteId,
+                backfill));
+        }
+
+        var doorEvents = observation.DoorEvents ?? [];
+        for (var index = 0; index < doorEvents.Count; index++)
+        {
+            var doorEvent = doorEvents[index];
+            var isLastInMessage = index == doorEvents.Count - 1;
+            (backfill ? record.BackfillEvents : record.Events).Add(new VehicleDoorEvent(
+                doorEvent.Door,
+                doorEvent.Boardings,
+                doorEvent.Alightings,
+                observation.Location,
+                doorEvent.OpenedAt,
+                doorEvent.ClosedAt,
+                isLastInMessage ? observation.Occupancy?.PassengerCount : null));
         }
     }
 
@@ -115,7 +141,7 @@ public sealed class VehicleStateStore(IOptions<OccupancyApiOptions> options, Tim
         lock (record)
         {
             entries = record.History
-                .Where(entry => entry.Time >= from && entry.Time < to)
+                .Where(entry => !entry.Backfill && entry.Time >= from && entry.Time < to)
                 .OrderBy(entry => entry.Time)
                 .ToArray();
         }
@@ -134,6 +160,28 @@ public sealed class VehicleStateStore(IOptions<OccupancyApiOptions> options, Tim
                     OccupancyClassifier.Percent(last.PassengerCount, last.Capacity));
             })
             .ToArray();
+    }
+
+    /// <summary>Hourly service time, loads and boardings of every bus between two moments.</summary>
+    public IReadOnlyList<(string VehicleId, IReadOnlyList<HourlyUsage> Hours)> GetHourlyUsage(DateTimeOffset from, DateTimeOffset to)
+    {
+        var result = new List<(string, IReadOnlyList<HourlyUsage>)>();
+        foreach (var record in _vehicles.Values.OrderBy(record => record.VehicleId, StringComparer.Ordinal))
+        {
+            HistoryEntry[] history;
+            VehicleDoorEvent[] events;
+            lock (record)
+            {
+                history = record.History.Where(entry => entry.Time >= from && entry.Time < to).OrderBy(entry => entry.Time).ToArray();
+                events = record.BackfillEvents.Concat(record.Events)
+                    .Where(item => item.ClosedAt >= from && item.ClosedAt < to)
+                    .ToArray();
+            }
+
+            result.Add((record.VehicleId, UsageCalculator.Hourly(history, events, from, to)));
+        }
+
+        return result;
     }
 
     private VehicleState? Snapshot(VehicleRecord record)
@@ -159,8 +207,17 @@ public sealed class VehicleStateStore(IOptions<OccupancyApiOptions> options, Tim
 
     private void Trim(VehicleRecord record, DateTimeOffset now)
     {
+        // History arrives almost in order, so only scan it when its oldest entry has expired.
         var oldestKept = now - TimeSpan.FromHours(_options.HistoryRetentionHours);
-        record.History.RemoveAll(entry => entry.Time < oldestKept);
+        if (record.History.Count > 0 && record.History[0].Time < oldestKept)
+        {
+            record.History.RemoveAll(entry => entry.Time < oldestKept);
+        }
+
+        if (record.BackfillEvents.Count > 0 && record.BackfillEvents[0].ClosedAt < oldestKept)
+        {
+            record.BackfillEvents.RemoveAll(item => item.ClosedAt < oldestKept);
+        }
 
         var excess = record.Events.Count - _options.MaxEventsPerVehicle;
         if (excess > 0)
@@ -169,8 +226,6 @@ public sealed class VehicleStateStore(IOptions<OccupancyApiOptions> options, Tim
             record.Events.RemoveRange(0, excess);
         }
     }
-
-    private sealed record HistoryEntry(DateTimeOffset Time, int PassengerCount, int Capacity);
 
     private sealed class VehicleRecord(string vehicleId)
     {
@@ -183,6 +238,7 @@ public sealed class VehicleStateStore(IOptions<OccupancyApiOptions> options, Tim
         public bool? CameraOnline { get; set; }
         public string? Firmware { get; set; }
         public List<VehicleDoorEvent> Events { get; } = [];
+        public List<VehicleDoorEvent> BackfillEvents { get; } = [];
         public List<HistoryEntry> History { get; } = [];
     }
 }

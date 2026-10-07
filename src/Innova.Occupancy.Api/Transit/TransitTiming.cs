@@ -27,10 +27,10 @@ public static class TransitTiming
     public static double HourOfDay(DateTimeOffset now, double? hourOverride) =>
         hourOverride ?? now.ToOffset(CostaRicaOffset).TimeOfDay.TotalHours;
 
-    /// <summary>Parses MockFleet:TimeOfDayOverride ("07:30"); empty means the real clock.</summary>
-    public static double? ParseTimeOfDay(string? value) =>
+    /// <summary>Parses a time-of-day setting such as MockFleet:TimeOfDayOverride ("07:30"); empty gives null.</summary>
+    public static double? ParseTimeOfDay(string? value, string setting = "MockFleet:TimeOfDayOverride") =>
         string.IsNullOrWhiteSpace(value) ? null
         : TimeOnly.TryParse(value, CultureInfo.InvariantCulture, out var timeOfDay)
             ? timeOfDay.ToTimeSpan().TotalHours
-            : throw new InvalidOperationException($"MockFleet:TimeOfDayOverride '{value}' is not a time such as 07:30.");
+            : throw new InvalidOperationException($"{setting} '{value}' is not a time such as 07:30.");
 }
