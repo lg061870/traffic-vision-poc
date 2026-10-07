@@ -29,6 +29,7 @@ Thumbs.db
 !.env.example
 # Not secret: the public API address the deployed map app calls.
 !src/occupancy-reference-web/.env.production
+!src/operator-dashboard-web/.env.production
 
 # Road-video inputs and generated artifacts
 *.mp4

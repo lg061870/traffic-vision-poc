@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Serves the built operator-dashboard-web app as static files, so the dashboard can be published
+       from Visual Studio (Web Deploy) like the API and the map. It has no API of its own: the
+       dashboard calls the Occupancy API over HTTP. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- SmarterASP puts every site of an account in one app pool, where only one ASP.NET Core
+         app may run in-process (HTTP 500.35) and modes can't be mixed (500.34). -->
+    <AspNetCoreHostingModel>OutOfProcess</AspNetCoreHostingModel>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Publish runs "npm run build" in the React project and places its output in wwwroot,
+         including the camera clip that the build copies from data/demo. -->
+    <ProjectReference Include="..\operator-dashboard-web\operator-dashboard-web.esproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>
