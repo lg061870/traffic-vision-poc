@@ -18,13 +18,26 @@ interface ClipResult {
   frames: { timestampSeconds: number; detections: Detection[] }[]
 }
 
+/** The clip's files are not on the server (404), as opposed to a passing network error. */
+class ClipMissing extends Error {}
+
+/** Wait before trying again after a network error, so a server restart heals by itself. */
+const retryMs = 4000
+
 let resultRequest: Promise<ClipResult> | null = null
 
 function loadResult() {
-  resultRequest ??= fetch(cameraDemo.result).then((response) => {
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    return response.json() as Promise<ClipResult>
-  })
+  resultRequest ??= fetch(cameraDemo.result)
+    .then((response) => {
+      if (response.status === 404) throw new ClipMissing()
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      return response.json() as Promise<ClipResult>
+    })
+    .catch((error) => {
+      // Not cached: the next panel, or the next retry, asks again.
+      resultRequest = null
+      throw error
+    })
   return resultRequest
 }
 
@@ -73,10 +86,36 @@ export function CameraPanel({ isCameraBus, occupancy, compact = false, vehicleId
   const [result, setResult] = useState<ClipResult | null>(null)
   const [missing, setMissing] = useState(false)
   const [second, setSecond] = useState(0)
+  // A failed video load (server restarting, a dropped connection) remounts the video after a pause.
+  const [videoAttempt, setVideoAttempt] = useState(0)
+  const [videoFailed, setVideoFailed] = useState(false)
 
   useEffect(() => {
-    loadResult().then(setResult).catch(() => setMissing(true))
+    let timer: number | undefined
+    let cancelled = false
+    const load = () =>
+      loadResult()
+        .then((loaded) => !cancelled && setResult(loaded))
+        .catch((error) => {
+          if (cancelled) return
+          if (error instanceof ClipMissing) setMissing(true)
+          else timer = window.setTimeout(load, retryMs)
+        })
+    load()
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
   }, [])
+
+  useEffect(() => {
+    if (!videoFailed) return
+    const timer = window.setTimeout(() => {
+      setVideoFailed(false)
+      setVideoAttempt((attempt) => attempt + 1)
+    }, retryMs)
+    return () => window.clearTimeout(timer)
+  }, [videoFailed])
 
   // Keeps the video on the shared clock and redraws the boxes about five times a second.
   useEffect(() => {
@@ -124,6 +163,7 @@ export function CameraPanel({ isCameraBus, occupancy, compact = false, vehicleId
       </h3>
       <div className="camera-frame" style={result ? { aspectRatio: `${result.width} / ${result.height}` } : undefined}>
         <video
+          key={videoAttempt}
           ref={video}
           src={cameraDemo.video}
           muted
@@ -134,8 +174,9 @@ export function CameraPanel({ isCameraBus, occupancy, compact = false, vehicleId
           onLoadedMetadata={(event) => {
             if (result) event.currentTarget.currentTime = clipSecond(result.durationSeconds, clipOffset(vehicleId, result.durationSeconds))
           }}
-          onError={() => setMissing(true)}
+          onError={() => setVideoFailed(true)}
         />
+        {videoFailed && <span className="camera-status">Reconectando el video…</span>}
         {result && (
           <svg viewBox={`0 0 ${result.width} ${result.height}`} preserveAspectRatio="none" aria-hidden="true">
             {detections.map((d) => (

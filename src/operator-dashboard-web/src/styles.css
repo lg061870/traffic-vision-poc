@@ -772,6 +772,17 @@ button {
   object-fit: fill;
 }
 
+.camera-status {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 60%);
+  color: #fff;
+  font-size: 12px;
+}
+
 .box {
   fill: none;
   stroke-width: 2.5;
