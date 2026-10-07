@@ -1,0 +1,15 @@
+{
+  // Settings for the hosted on-board computer. Kept apart from appsettings.json, which comes along
+  // from the referenced OnboardComputerApp; this file is read after it, so these values win.
+  "OnboardComputer": {
+    "OccupancyApiUrl": "https://lg0618pp-002-site2.htempurl.com",
+    "VehicleId": "SJB-10662",
+    "SendIntervalSeconds": 10,
+    "Simulation": {
+      "Enabled": true,
+      "ScenarioFile": "Scenarios/ramal-san-rafael-camara.json",
+      "Loop": true
+    }
+  },
+  "AllowedHosts": "*"
+}

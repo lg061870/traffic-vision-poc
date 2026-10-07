@@ -62,6 +62,8 @@ El escenario incluido, `Scenarios/ramal-san-rafael.json`, es una vuelta de 20 mi
 dotnet run --project src/Innova.OnboardComputer.App --launch-profile camara-grabada
 ```
 
+Para que este bus siga reportando a la API publicada sin una PC encendida, [Innova.OnboardComputer.Host](../Innova.OnboardComputer.Host/README.md) corre esta misma app en SmarterASP.
+
 ## Dispositivos reales
 
 Solo cambian las fuentes. Hoy `Program.cs` registra `BufferedGpsSource`, `BufferedDoorCounterSource` y `BufferedVisionSource`, que el reproductor del escenario alimenta. Para un dispositivo real se registra otra implementación de `IGpsSource` (por ejemplo, un lector de puerto serie que entrega cada línea NMEA), `IDoorCounterSource` (con su `Format`; otro fabricante necesita también su adaptador en la API) o `IVisionSource` (cliente de la API de inferencia). El resto de la app no cambia. Con `Simulation:Enabled=false` y sin adaptadores reales, la app arranca pero no envía nada.

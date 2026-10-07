@@ -10,8 +10,9 @@ namespace Innova.OnboardComputer.App.Sending;
 /// sequence at or below the last one it accepted, so sending a newer message first would make
 /// every older one a duplicate and lose its door counts.
 /// </summary>
-public sealed class MessageOutbox(IOptions<OnboardComputerOptions> options, ILogger<MessageOutbox> logger)
+public sealed class MessageOutbox(IOptions<OnboardComputerOptions> options, ILogger<MessageOutbox> logger, TimeProvider? time = null)
 {
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
     private readonly LinkedList<RawVehicleMessage> _pending = new();
     private readonly SemaphoreSlim _flushing = new(1, 1);
     private readonly Lock _lock = new();
@@ -26,6 +27,9 @@ public sealed class MessageOutbox(IOptions<OnboardComputerOptions> options, ILog
             }
         }
     }
+
+    /// <summary>When the API last accepted a message; null until the first one gets through.</summary>
+    public DateTimeOffset? LastDeliveredAt { get; private set; }
 
     public void Enqueue(RawVehicleMessage message)
     {
@@ -69,6 +73,7 @@ public sealed class MessageOutbox(IOptions<OnboardComputerOptions> options, ILog
                         break;
                     default:
                         logger.LogDebug("Sent sequence {Sequence}.", message.Sequence);
+                        LastDeliveredAt = _time.GetUtcNow();
                         break;
                 }
 

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Runs the OnboardComputerApp inside IIS, so the camera bus (SJB-10662) keeps reporting to the
+       published Occupancy API without a PC. The app itself is unchanged: this project only hosts it
+       and adds a status page for an uptime monitor. On a real bus the console app runs instead. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- SmarterASP puts every site of an account in one app pool, where only one ASP.NET Core
+         app may run in-process (HTTP 500.35) and modes can't be mixed (500.34). -->
+    <AspNetCoreHostingModel>OutOfProcess</AspNetCoreHostingModel>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Brings the app's scenarios, route lines and recorded camera detections along. -->
+    <ProjectReference Include="..\Innova.OnboardComputer.App\Innova.OnboardComputer.App.csproj" />
+  </ItemGroup>
+
+</Project>
