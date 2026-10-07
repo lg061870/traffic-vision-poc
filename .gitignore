@@ -41,6 +41,8 @@ data/output/*
 !data/output/README.md
 data/demo/*
 !data/demo/README.md
+# Copied from data/demo by the dashboard's sync-demo script.
+src/operator-dashboard-web/public/demo/
 
 # Model artifacts are supplied locally and may be large
 *.onnx
