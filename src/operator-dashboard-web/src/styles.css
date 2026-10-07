@@ -1185,3 +1185,41 @@ button {
   background: var(--warn-bg);
   font-size: 12px;
 }
+
+/* ---- "Explicar resultado" ---- */
+
+.button-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.button-primary:hover {
+  border-color: var(--accent);
+  filter: brightness(1.08);
+}
+
+.explain p {
+  margin: 0 0 10px;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.explain .explain-scope {
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.explain .explain-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.explain-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}

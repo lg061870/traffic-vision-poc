@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { cameraDemo, fareSource } from './config/operatorSettings'
 import { AssumptionsPanel } from './components/AssumptionsPanel'
 import { BusPanel } from './components/BusPanel'
+import { ExplainPanel } from './components/ExplainPanel'
 import { AssumptionsContext } from './components/HelpButton'
 import { LiveView } from './components/LiveView'
 import { Modal } from './components/Modal'
@@ -11,7 +12,8 @@ import { useAssumptions } from './hooks/useAssumptions'
 import { hrefOf, useHashRoute, type Tab } from './hooks/useHashRoute'
 import { useNow, usePolling } from './hooks/usePolling'
 import { useRoutes } from './hooks/useRoutes'
-import { routeOf, rowsInPeriod, serviceDay, usageRows } from './kpis'
+import { periodLabels, routeOf, rowsInPeriod, serviceDay, usageRows } from './kpis'
+import { buildNarrative } from './narrative'
 import { getFleetHourly, getVehicles } from './services/occupancyApi'
 
 const operatorName = 'Autobuses Unidos de Coronado'
@@ -31,6 +33,7 @@ export function App() {
   const { geojson, names } = useRoutes()
   const { assumptions, setAssumptions, reset, isDefault } = useAssumptions()
   const [showAssumptions, setShowAssumptions] = useState(false)
+  const [showExplanation, setShowExplanation] = useState(false)
 
   const vehicles = vehiclesFeed.data?.vehicles ?? []
   const rows = useMemo(() => usageRows(hourlyFeed.data), [hourlyFeed.data])
@@ -72,6 +75,11 @@ export function App() {
             title={`Los buses, la ocupación y los abordajes son simulados, salvo el bus ${cameraDemo.vehicleId}, cuyo conteo sale del modelo de visión. Las cifras en colones usan tarifas oficiales y un costo estimado.`}>
             Datos simulados · {cameraDemo.vehicleId} con cámara IA
           </span>
+          {state.tab === 'profit' && (
+            <button type="button" className="button button-primary" onClick={() => setShowExplanation(true)}>
+              Explicar resultado
+            </button>
+          )}
           <button type="button" className="button" onClick={() => setShowAssumptions(true)}>
             Supuestos{isDefault ? '' : ' •'}
           </button>
@@ -106,6 +114,21 @@ export function App() {
         <BusPanel vehicleId={state.vehicleId} vehicle={openVehicle} routeId={openRoute}
           routeName={openRoute ? names.get(openRoute) ?? null : null} rows={rows} routes={geojson} assumptions={assumptions}
           now={now} onClose={closeBus} />
+      )}
+
+      {showExplanation && state.tab === 'profit' && (
+        <Modal title="El resultado en palabras" onClose={() => setShowExplanation(false)}>
+          <ExplainPanel
+            scope={`${state.routeId ? names.get(state.routeId) ?? state.routeId : 'Toda la flota'} · ${periodLabels[state.period].toLowerCase()} · ${day.label}`}
+            paragraphs={buildNarrative({
+              rows: state.routeId ? rows.filter((row) => row.routeId === state.routeId) : rows,
+              routeName: state.routeId ? names.get(state.routeId) ?? state.routeId : null,
+              period: state.period,
+              dayLabel: day.label,
+              assumptions,
+            })}
+          />
+        </Modal>
       )}
 
       {showAssumptions && (

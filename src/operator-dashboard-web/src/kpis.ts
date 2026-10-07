@@ -30,6 +30,8 @@ export interface Totals {
   loss: number
   /** Service hours spent in those losing bus-hours. */
   lossHours: number
+  /** What the bus-hours that covered their cost earned above it; gain − loss = revenue − cost. */
+  gain: number
   averagePercent: number
   crowdedHours: number
   nearlyEmptyHours: number
@@ -91,6 +93,7 @@ export function totals(rows: UsageRow[], assumptions: Assumptions): Totals {
     cost,
     loss,
     lossHours: lossSeconds / 3600,
+    gain: revenue - cost + loss,
     averagePercent: serviceSeconds > 0 ? percentSeconds / serviceSeconds : 0,
     crowdedHours: crowdedSeconds / 3600,
     nearlyEmptyHours: nearlyEmptySeconds / 3600,
