@@ -82,7 +82,7 @@ export function BusPanel({ vehicleId, vehicle, routeId, routeName, rows, routes,
 
         {vehicle?.location && (
           <section className="panel map-panel drawer-map">
-            <FleetMap routes={routes} vehicles={[vehicle]} routeId={routeId} selectedId={vehicleId} onSelect={() => undefined} />
+            <FleetMap routes={routes} vehicles={[vehicle]} routeId={routeId} selectedId={vehicleId} follow onSelect={() => undefined} />
           </section>
         )}
       </aside>

@@ -18,10 +18,12 @@ interface LiveViewProps {
   routeNames: Map<string, string>
   registry: Map<string, string | null>
   selectedRoute: string | null
+  /** The bus whose panel is open; the map flies to it. */
+  openBusId: string | null
   onOpenBus: (vehicleId: string) => void
 }
 
-export function LiveView({ vehicles, allVehicles, routes, routeNames, registry, selectedRoute, onOpenBus }: LiveViewProps) {
+export function LiveView({ vehicles, allVehicles, routes, routeNames, registry, selectedRoute, openBusId, onOpenBus }: LiveViewProps) {
   const running = vehicles.filter(inService)
   const passengers = running.reduce((sum, v) => sum + (v.occupancy?.passengerCount ?? 0), 0)
   const capacity = running.reduce((sum, v) => sum + (v.occupancy?.capacity ?? 0), 0)
@@ -51,7 +53,7 @@ export function LiveView({ vehicles, allVehicles, routes, routeNames, registry, 
       </div>
 
       <section className="panel map-panel">
-        <FleetMap routes={routes} vehicles={vehicles} routeId={selectedRoute} onSelect={onOpenBus} />
+        <FleetMap routes={routes} vehicles={vehicles} routeId={selectedRoute} selectedId={openBusId} zoomToSelected onSelect={onOpenBus} />
       </section>
 
       <div className="live-side">

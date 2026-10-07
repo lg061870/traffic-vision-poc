@@ -90,7 +90,7 @@ export function App() {
               selectedRoute={state.routeId} period={state.period} onSelectRoute={toggleRoute} />
           ) : (
             <LiveView vehicles={routeVehicles} allVehicles={vehicles} routes={geojson} routeNames={names} registry={registry}
-              selectedRoute={state.routeId} onOpenBus={openBus} />
+              selectedRoute={state.routeId} openBusId={state.vehicleId} onOpenBus={openBus} />
           )}
         </main>
       </div>
