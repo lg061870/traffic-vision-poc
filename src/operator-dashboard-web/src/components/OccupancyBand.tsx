@@ -1,5 +1,6 @@
 import { statusDisplay, statusOrder } from '../display'
 import type { OccupancyStatus, VehicleState } from '../types/occupancy'
+import { HelpButton } from './HelpButton'
 
 // The API's GTFS-Realtime levels with the thresholds configured in its appsettings.json.
 const ranges: Record<OccupancyStatus, string> = {
@@ -17,6 +18,7 @@ const darkText = new Set<OccupancyStatus>(['EMPTY', 'MANY_SEATS_AVAILABLE', 'FEW
 export function OccupancyBand({ vehicles }: { vehicles: VehicleState[] }) {
   return (
     <div className="band" role="list" aria-label="Buses en servicio por nivel de ocupación">
+      <HelpButton topic="band" />
       {statusOrder.map((status) => (
         <div key={status} role="listitem" className={`band-segment ${darkText.has(status) ? 'dark-text' : ''}`}
           style={{ background: statusDisplay[status].color }}>

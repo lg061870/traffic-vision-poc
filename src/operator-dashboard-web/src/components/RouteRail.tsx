@@ -3,6 +3,7 @@ import type { Tab } from '../hooks/useHashRoute'
 import { shortName } from '../hooks/useRoutes'
 import { formatOne, groupBy, inService, periodLabels, routeOf, totals, type Period, type UsageRow } from '../kpis'
 import type { VehicleState } from '../types/occupancy'
+import { HelpButton } from './HelpButton'
 
 interface RouteRailProps {
   tab: Tab
@@ -28,6 +29,7 @@ export function RouteRail(props: RouteRailProps) {
   return (
     <aside className="rail">
       <section className="panel rail-routes">
+        <HelpButton topic="routes" />
         <h3>
           Rutas <span className="hint">{tab === 'profit' ? 'abord. por hora-bus' : 'buses en servicio'}</span>
         </h3>
@@ -56,6 +58,7 @@ export function RouteRail(props: RouteRailProps) {
       </section>
       {tab === 'profit' && (
         <section className="panel">
+          <HelpButton topic="period" />
           <h3>Franja</h3>
           <div className="segmented">
             {(Object.keys(periodLabels) as Period[]).map((p) => (

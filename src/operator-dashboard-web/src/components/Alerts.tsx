@@ -3,6 +3,7 @@ import { thresholds } from '../config/operatorSettings'
 import { shortName } from '../hooks/useRoutes'
 import { bunching, inService, routeOf } from '../kpis'
 import type { VehicleState } from '../types/occupancy'
+import { HelpButton } from './HelpButton'
 
 interface AlertsProps {
   vehicles: VehicleState[]
@@ -56,6 +57,7 @@ export function Alerts({ vehicles, routeNames, registry, onOpenBus }: AlertsProp
 
   return (
     <section className="panel alerts">
+      <HelpButton topic="alerts" />
       <h3>Alertas</h3>
       <div className="alert-list">
         {groups.map((group) => (

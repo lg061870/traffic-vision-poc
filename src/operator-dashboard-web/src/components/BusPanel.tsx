@@ -7,6 +7,7 @@ import { formatColonesShort, formatOne, formatWhole, totals, type UsageRow } fro
 import type { VehicleState } from '../types/occupancy'
 import { CameraPanel } from './CameraPanel'
 import { FleetMap } from './FleetMap'
+import { HelpButton } from './HelpButton'
 import { HourlyChart } from './HourlyChart'
 import { Tile } from './Tile'
 
@@ -53,13 +54,13 @@ export function BusPanel({ vehicleId, vehicle, routeId, routeName, rows, routes,
         {vehicle && (
           <div className="cards cards-2">
             <Tile label="Ocupación ahora" value={occupancy && live ? `${occupancy.passengerCount} / ${occupancy.capacity}` : '—'}
-              hint={occupancy && live ? `${occupancy.percent} % · ${statusDisplay[occupancy.status].label}` : 'Sin dato actual'} />
+              hint={occupancy && live ? `${occupancy.percent} % · ${statusDisplay[occupancy.status].label}` : 'Sin dato actual'} help="busNow" />
             <Tile label="Fuente del conteo" value={occupancy ? sourceDisplay[occupancy.source] : '—'}
-              hint={`Último reporte ${formatAgo(vehicle.device.lastSeen, now)}`} />
+              hint={`Último reporte ${formatAgo(vehicle.device.lastSeen, now)}`} help="source" />
             <Tile label="Abordajes por hora-bus" value={measured ? formatOne(t.ridersPerBusHour) : '—'}
-              tone={measured ? (t.ridersPerBusHour >= t.breakEven ? 'good' : 'bad') : 'neutral'} hint={`Equilibrio ${formatOne(t.breakEven)}`} estimate />
+              tone={measured ? (t.ridersPerBusHour >= t.breakEven ? 'good' : 'bad') : 'neutral'} hint={`Equilibrio ${formatOne(t.breakEven)}`} estimate help="gauge" />
             <Tile label="Abordajes hoy" value={measured ? formatWhole(t.boardings) : '—'}
-              hint={measured ? `Ingreso ${formatColonesShort(t.revenue)} · pérdida ${formatColonesShort(t.loss)}` : undefined} estimate />
+              hint={measured ? `Ingreso ${formatColonesShort(t.revenue)} · pérdida ${formatColonesShort(t.loss)}` : undefined} estimate help="boardings" />
           </div>
         )}
 
@@ -76,6 +77,7 @@ export function BusPanel({ vehicleId, vehicle, routeId, routeName, rows, routes,
         )}
 
         <section className="panel drawer-chart">
+          <HelpButton topic="hourly" />
           <h3>{measured ? '¿Qué horas pagaron su costo?' : 'Ocupación por hora'}</h3>
           <HourlyChart rows={busRows} assumptions={assumptions} mode={measured ? 'riders' : 'occupancy'} />
         </section>

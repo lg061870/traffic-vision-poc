@@ -1,6 +1,7 @@
 import type { Assumptions } from '../config/operatorSettings'
 import { formatColonesShort, formatOne, formatWhole, periodLabels, rowsInPeriod, totals, type Period, type UsageRow } from '../kpis'
 import { Gauge } from './Gauge'
+import { HelpButton } from './HelpButton'
 import { Heatmap } from './Heatmap'
 import { HourlyChart } from './HourlyChart'
 import { LoadStack } from './LoadStack'
@@ -30,24 +31,27 @@ export function ProfitView({ rows, dayLabel, routeIds, routeNames, assumptions, 
   return (
     <div className="profit">
       <div className="cards">
-        <Tile label={`Abordajes ${dayLabel}`} value={measured ? formatWhole(t.boardings) : '—'} hint={`${formatOne(t.measuredHours)} horas-bus · ${scope}`} />
-        <Tile label="Ingreso estimado" value={measured ? formatColonesShort(t.revenue) : '—'} hint="Abordajes × tarifa ARESEP" estimate />
-        <Tile label="Costo de operación" value={measured ? formatColonesShort(t.cost) : '—'} hint={`${formatColonesShort(assumptions.costPerBusHour)} por hora-bus`} estimate />
+        <Tile label={`Abordajes ${dayLabel}`} value={measured ? formatWhole(t.boardings) : '—'} hint={`${formatOne(t.measuredHours)} horas-bus · ${scope}`} help="boardings" />
+        <Tile label="Ingreso estimado" value={measured ? formatColonesShort(t.revenue) : '—'} hint="Abordajes × tarifa ARESEP" estimate help="revenue" />
+        <Tile label="Costo de operación" value={measured ? formatColonesShort(t.cost) : '—'} hint={`${formatColonesShort(assumptions.costPerBusHour)} por hora-bus`} estimate help="cost" />
         <Tile label="Pérdida en horas bajo equilibrio" value={measured ? formatColonesShort(t.loss) : '—'} tone={t.loss > 0 ? 'bad' : 'neutral'}
-          hint={measured ? `${formatOne(t.lossHours)} horas-bus no cubrieron su costo` : undefined} estimate />
+          hint={measured ? `${formatOne(t.lossHours)} horas-bus no cubrieron su costo` : undefined} estimate help="loss" />
       </div>
 
       <section className="panel gauge-panel">
+        <HelpButton topic="gauge" />
         <h3>Abordajes por hora-bus</h3>
         <Gauge value={t.ridersPerBusHour} breakEven={t.breakEven} measured={measured} />
       </section>
 
       <section className="panel hourly-panel">
+        <HelpButton topic="hourly" />
         <h3>¿Qué horas pagan su costo? <span className="hint">verde: cubre su costo · rojo: no lo cubre</span></h3>
         <HourlyChart rows={routeRows} assumptions={assumptions} mode="riders" period={period} />
       </section>
 
       <section className="panel heatmap-panel">
+        <HelpButton topic="heatmap" />
         <h3>Ruta × hora <span className="hint">abordajes por hora-bus contra el equilibrio de cada ruta · toque una ruta para filtrar</span></h3>
         <Heatmap rows={rows} routeIds={routeIds} routeNames={routeNames} assumptions={assumptions}
           selectedRoute={selectedRoute} period={period} onSelectRoute={onSelectRoute} />
@@ -60,6 +64,7 @@ export function ProfitView({ rows, dayLabel, routeIds, routeNames, assumptions, 
       </section>
 
       <section className="panel load-panel">
+        <HelpButton topic="load" />
         <h3>Tiempo por nivel de ocupación</h3>
         <LoadStack rows={rowsInPeriod(rows, period)} routeIds={routeIds}
           routeNames={routeNames} selectedRoute={selectedRoute} onSelectRoute={onSelectRoute} />

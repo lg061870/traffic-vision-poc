@@ -45,11 +45,11 @@ export function LiveView({ vehicles, allVehicles, routes, routeNames, registry, 
 
       <div className="cards">
         <Tile label="Buses en servicio" value={`${running.length} de ${vehicles.length}`}
-          hint={`${vehicles.length - running.length - silent} estacionados · ${silent} sin reporte`} />
-        <Tile label="Pasajeros a bordo" value={formatWhole(passengers)} />
-        <Tile label="Ocupación" value={capacity > 0 ? formatPercent((passengers * 100) / capacity) : '—'} hint="De la capacidad en servicio" />
+          hint={`${vehicles.length - running.length - silent} estacionados · ${silent} sin reporte`} help="inService" />
+        <Tile label="Pasajeros a bordo" value={formatWhole(passengers)} help="onBoard" />
+        <Tile label="Ocupación" value={capacity > 0 ? formatPercent((passengers * 100) / capacity) : '—'} hint="De la capacidad en servicio" help="occupancy" />
         <Tile label="Fuente del conteo" value={`${sources.get('CABIN_CAMERA') ?? 0} con cámara IA`}
-          hint={[...sources.entries()].map(([source, count]) => `${sourceDisplay[source]}: ${count}`).join(' · ')} />
+          hint={[...sources.entries()].map(([source, count]) => `${sourceDisplay[source]}: ${count}`).join(' · ')} help="source" />
       </div>
 
       <section className="panel map-panel">

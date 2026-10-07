@@ -1073,3 +1073,115 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ---- Help ("?" in each card's corner) ---- */
+
+.tile,
+.panel,
+.band {
+  position: relative;
+}
+
+.help-button {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid #c9d1db;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 85%);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.help-button:hover,
+.help-button.open,
+.help-button:focus-visible {
+  opacity: 1;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Keep titles and labels clear of the corner button. */
+.panel h3,
+.tile-label {
+  padding-right: 22px;
+}
+
+.help-popover {
+  position: fixed;
+  z-index: 3000;
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgb(15 23 32 / 18%);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.help-popover header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.help-close {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.help-close:hover {
+  background: #f1f3f6;
+  color: var(--text);
+}
+
+.help-popover p {
+  margin: 0 0 8px;
+}
+
+.help-popover h4 {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.help-popover ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.help-popover li + li {
+  margin-top: 4px;
+}
+
+.help-popover .help-note {
+  margin-top: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--warn-bg);
+  font-size: 12px;
+}

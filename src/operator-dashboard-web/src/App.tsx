@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { cameraDemo, fareSource } from './config/operatorSettings'
 import { AssumptionsPanel } from './components/AssumptionsPanel'
 import { BusPanel } from './components/BusPanel'
+import { AssumptionsContext } from './components/HelpButton'
 import { LiveView } from './components/LiveView'
 import { Modal } from './components/Modal'
 import { ProfitView } from './components/ProfitView'
@@ -54,6 +55,7 @@ export function App() {
   const openRoute = state.vehicleId ? (openVehicle ? routeOf(openVehicle, registry) : registry.get(state.vehicleId) ?? null) : null
 
   return (
+    <AssumptionsContext.Provider value={assumptions}>
     <div className="app">
       <header className="topbar">
         <div className="brand">
@@ -112,5 +114,6 @@ export function App() {
         </Modal>
       )}
     </div>
+    </AssumptionsContext.Provider>
   )
 }

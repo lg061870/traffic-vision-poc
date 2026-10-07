@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { cameraDemo } from '../config/operatorSettings'
 import type { OccupancySnapshot } from '../types/occupancy'
+import { HelpButton } from './HelpButton'
 
 interface Detection {
   trackId: number
@@ -155,6 +156,7 @@ export function CameraPanel({ isCameraBus, occupancy, compact = false, vehicleId
 
   return (
     <section className={`panel camera-panel ${compact ? 'compact' : ''}`}>
+      <HelpButton topic="camera" />
       <h3>
         Cámara a bordo{compact && vehicleId ? ` · ${vehicleId}` : ''} <span className="tag">Grabación analizada por IA</span>
         {onOpen && (
