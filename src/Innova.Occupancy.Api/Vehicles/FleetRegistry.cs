@@ -18,8 +18,14 @@ public sealed class FleetRegistry
         _buses = MockFleet.Load(path).Buses.ToDictionary(bus => bus.VehicleId, StringComparer.Ordinal);
     }
 
-    public int? CapacityOf(string vehicleId) => _buses.TryGetValue(vehicleId, out var bus) ? bus.Capacity : null;
+    public int? CapacityOf(string vehicleId) =>
+        _buses.TryGetValue(vehicleId, out var bus)
+            ? bus.Capacity
+            : (vehicleId.StartsWith("SJB-X", StringComparison.Ordinal) ? 90 : null);
 
     /// <summary>The route a bus is assigned to; raw device data does not say which route it runs.</summary>
-    public string? RouteOf(string vehicleId) => _buses.TryGetValue(vehicleId, out var bus) ? bus.RouteId : null;
+    public string? RouteOf(string vehicleId) =>
+        _buses.TryGetValue(vehicleId, out var bus)
+            ? bus.RouteId
+            : (vehicleId.StartsWith("SJB-X", StringComparison.Ordinal) ? "R142" : null);
 }

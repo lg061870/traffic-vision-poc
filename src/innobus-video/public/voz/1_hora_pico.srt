@@ -1,0 +1,8 @@
+1
+00:00:00,100 --> 00:00:02,536
+Cinco y media de la tarde.
+
+2
+00:00:02,486 --> 00:00:08,780
+San José colapsa en la presa de hora pico, y Sofía necesita volver a su casa en Coronado.
+

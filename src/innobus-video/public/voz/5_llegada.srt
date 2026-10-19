@@ -1,0 +1,8 @@
+1
+00:00:00,100 --> 00:00:03,728
+Llegó a Coronado a tiempo, sentada y segura.
+
+2
+00:00:03,678 --> 00:00:07,601
+Así se transforma el transporte público con INNOBUS.
+

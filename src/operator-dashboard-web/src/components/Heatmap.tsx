@@ -10,6 +10,7 @@ interface HeatmapProps {
   selectedRoute: string | null
   period: Period
   onSelectRoute: (routeId: string) => void
+  onOpenDiagnostic?: (hour: number, routeId: string | null) => void
 }
 
 /** Riders per bus-hour against break-even: deep red well below, light red just below, greens above. */
@@ -21,7 +22,16 @@ function cellColor(ratio: number) {
 }
 
 // Route × hour: where and when the buses carried enough paying riders to cover their cost.
-export function Heatmap({ rows, routeIds, routeNames, assumptions, selectedRoute, period, onSelectRoute }: HeatmapProps) {
+export function Heatmap({
+  rows,
+  routeIds,
+  routeNames,
+  assumptions,
+  selectedRoute,
+  period,
+  onSelectRoute,
+  onOpenDiagnostic,
+}: HeatmapProps) {
   const byRoute = groupBy(rows, (row) => row.routeId ?? '—')
   const hours = [...new Set(rows.filter((row) => row.usage.serviceSeconds > 0).map((row) => costaRicaHour(row.usage.hour)))].sort((a, b) => a - b)
   if (hours.length === 0) return <p className="empty">Todavía no hay horas en servicio hoy.</p>
@@ -30,7 +40,15 @@ export function Heatmap({ rows, routeIds, routeNames, assumptions, selectedRoute
     <div className="heatmap" style={{ gridTemplateColumns: `minmax(84px, auto) repeat(${hours.length}, minmax(0, 1fr))`, gridTemplateRows: `auto repeat(${routeIds.length}, minmax(0, 1fr))` }}>
       <span />
       {hours.map((hour) => (
-        <span key={hour} className={`heatmap-hour ${inPeriod(hour, period) ? '' : 'dim'}`}>{hour % 2 === 0 ? hour : ''}</span>
+        <button
+          key={hour}
+          type="button"
+          className={`heatmap-hour-btn ${inPeriod(hour, period) ? '' : 'dim'}`}
+          title={`${hour}:00 · Haga clic para ver diagnóstico de toda la flota en esta hora`}
+          onClick={() => onOpenDiagnostic && onOpenDiagnostic(hour, null)}
+        >
+          {hour % 2 === 0 ? hour : ''}
+        </button>
       ))}
       {routeIds.map((routeId) => {
         const byHour = groupBy(byRoute.get(routeId) ?? [], (row) => costaRicaHour(row.usage.hour))
@@ -50,8 +68,18 @@ export function Heatmap({ rows, routeIds, routeNames, assumptions, selectedRoute
                 type="button"
                 className={`heatmap-cell ${faded || !inPeriod(hour, period) ? 'faded' : ''}`}
                 style={{ background: empty ? 'var(--heat-none)' : cellColor(ratio) }}
-                title={empty ? `${name}, ${hour}:00: sin servicio` : `${name}, ${hour}:00: ${formatOne(t.ridersPerBusHour)} abordajes por hora-bus (equilibrio ${formatOne(t.breakEven)})`}
-                onClick={() => onSelectRoute(routeId)}
+                title={
+                  empty
+                    ? `${name}, ${hour}:00: sin servicio`
+                    : `${name}, ${hour}:00: ${formatOne(t.ridersPerBusHour)} abordajes por hora-bus (equilibrio ${formatOne(t.breakEven)})\n👉 Haga clic para ver diagnóstico detallado de esta franja`
+                }
+                onClick={() => {
+                  if (onOpenDiagnostic) {
+                    onOpenDiagnostic(hour, routeId)
+                  } else {
+                    onSelectRoute(routeId)
+                  }
+                }}
               />
             )
           }),

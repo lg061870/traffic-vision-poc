@@ -3,11 +3,11 @@ import type { Period } from '../kpis'
 
 // What is on screen lives in the URL hash (#/rentabilidad?ruta=R142-01&franja=pico&bus=SJB-10662),
 // so a link opens exactly the view it was copied from and the browser's back button works.
-export type Tab = 'profit' | 'live'
+export type Tab = 'profit' | 'live' | 'bunching'
 
 export interface ViewState {
   tab: Tab
-  /** Filters both tabs to one route; null is the whole fleet. */
+  /** Filters tabs to one route; null is the whole fleet. */
   routeId: string | null
   /** Filters the profitability tab to rush hours or off-peak hours. */
   period: Period
@@ -15,7 +15,7 @@ export interface ViewState {
   vehicleId: string | null
 }
 
-const tabPaths: Record<Tab, string> = { profit: 'rentabilidad', live: 'en-vivo' }
+const tabPaths: Record<Tab, string> = { profit: 'rentabilidad', live: 'en-vivo', bunching: 'pelotonamiento' }
 const periodNames: Record<Period, string | null> = { all: null, peak: 'pico', offpeak: 'valle' }
 
 export function parseHash(hash: string): ViewState {
@@ -27,7 +27,12 @@ export function parseHash(hash: string): ViewState {
   const legacyRoute = first === 'ruta' && second ? decodeURIComponent(second) : null
   const franja = params.get('franja')
   return {
-    tab: first === 'en-vivo' || legacyBus ? 'live' : 'profit',
+    tab:
+      first === 'en-vivo' || first === 'live'
+        ? 'live'
+        : first === 'pelotonamiento' || first === 'bunching'
+        ? 'bunching'
+        : 'profit',
     routeId: params.get('ruta') ?? legacyRoute,
     period: franja === 'pico' ? 'peak' : franja === 'valle' ? 'offpeak' : 'all',
     vehicleId: params.get('bus') ?? legacyBus,

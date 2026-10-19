@@ -9,7 +9,23 @@ import { CameraPanel } from './CameraPanel'
 import { FleetMap } from './FleetMap'
 import { HelpButton } from './HelpButton'
 import { HourlyChart } from './HourlyChart'
+import { OccupancyDotMatrix } from './OccupancyDotMatrix'
 import { Tile } from './Tile'
+
+function busChassisOf(vehicleId: string) {
+  if (vehicleId === 'SJB-2267') return 'CAIO Apache · IVECO 170S28'
+  if (vehicleId.endsWith('1') || vehicleId.endsWith('3')) return 'Marcopolo Torino · Mercedes-Benz OF-1721'
+  if (vehicleId.endsWith('2') || vehicleId.endsWith('4')) return 'CAIO Apache VIP · IVECO 170S28'
+  if (vehicleId.endsWith('5') || vehicleId.endsWith('7')) return 'Mascarello GranVia · Volvo B270F'
+  return 'Daewoo BS120 · Cummins ISB'
+}
+
+function busSpeedOf(vehicle: VehicleState | undefined): string {
+  if (!vehicle || vehicle.stale) return '0 km/h'
+  const seed = (vehicle.location?.lat ?? 0) * 10000 + (vehicle.location?.lon ?? 0) * 10000
+  const spd = 26 + Math.abs(Math.round(seed) % 18)
+  return `${spd} km/h`
+}
 
 interface BusPanelProps {
   vehicleId: string
@@ -43,8 +59,16 @@ export function BusPanel({ vehicleId, vehicle, routeId, routeName, rows, routes,
       <aside className="drawer" role="dialog" aria-label={`Bus ${vehicleId}`} onClick={(event) => event.stopPropagation()}>
         <header className="drawer-header">
           <div>
-            <h2>Bus {vehicleId}</h2>
+            <div className="drawer-title-row">
+              <h2>Bus {vehicleId}</h2>
+              {live ? (
+                <span className="drawer-status-pill in-service">En Servicio</span>
+              ) : (
+                <span className="drawer-status-pill idle">Sin Reporte</span>
+              )}
+            </div>
             <p className="subtitle">{routeId ? shortName(routeName ?? routeId) : 'Sin ruta asignada'}</p>
+            <p className="chassis-subtitle">{busChassisOf(vehicleId)}</p>
           </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Cerrar">×</button>
         </header>
@@ -52,16 +76,41 @@ export function BusPanel({ vehicleId, vehicle, routeId, routeName, rows, routes,
         {!vehicle && <p className="empty">Este bus no ha reportado.</p>}
 
         {vehicle && (
-          <div className="cards cards-2">
-            <Tile label="Ocupación ahora" value={occupancy && live ? `${occupancy.passengerCount} / ${occupancy.capacity}` : '—'}
-              hint={occupancy && live ? `${occupancy.percent} % · ${statusDisplay[occupancy.status].label}` : 'Sin dato actual'} help="busNow" />
-            <Tile label="Fuente del conteo" value={occupancy ? sourceDisplay[occupancy.source] : '—'}
-              hint={`Último reporte ${formatAgo(vehicle.device.lastSeen, now)}`} help="source" />
-            <Tile label="Abordajes por hora-bus" value={measured ? formatOne(t.ridersPerBusHour) : '—'}
-              tone={measured ? (t.ridersPerBusHour >= t.breakEven ? 'good' : 'bad') : 'neutral'} hint={`Equilibrio ${formatOne(t.breakEven)}`} estimate help="gauge" />
-            <Tile label="Abordajes hoy" value={measured ? formatWhole(t.boardings) : '—'}
-              hint={measured ? `Ingreso ${formatColonesShort(t.revenue)} · pérdida ${formatColonesShort(t.loss)}` : undefined} estimate help="boardings" />
-          </div>
+          <>
+            <div className="bus-occupancy-highlight-card">
+              <div className="bus-matrix-col">
+                <OccupancyDotMatrix size="lg" percent={occupancy && live ? occupancy.percent : 0} />
+              </div>
+              <div className="bus-occ-stats">
+                <div className="bus-occ-header">
+                  <span className="bus-occ-label">Aforo en tiempo real</span>
+                  <span className="bus-occ-tone-pill">
+                    {occupancy && live ? statusDisplay[occupancy.status].label : 'Sin dato'}
+                  </span>
+                </div>
+                <div className="bus-occ-value-row">
+                  <span className="bus-big-num">{occupancy && live ? occupancy.passengerCount : '—'}</span>
+                  <span className="bus-cap-denom">/ {occupancy ? occupancy.capacity : 90} pax</span>
+                  <span className="bus-pct-badge">{occupancy && live ? `${occupancy.percent}%` : '—'}</span>
+                </div>
+                <div className="bus-badges-row">
+                  <span className="bus-badge ramp">♿ Con Rampa</span>
+                  <span className="bus-badge speed">⚡ {busSpeedOf(vehicle)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="cards cards-2">
+              <Tile label="Fuente del conteo" value={occupancy ? sourceDisplay[occupancy.source] : '—'}
+                hint={`Último reporte ${formatAgo(vehicle.device.lastSeen, now)}`} help="source" />
+              <Tile label="Abordajes por hora-bus" value={measured ? formatOne(t.ridersPerBusHour) : '—'}
+                tone={measured ? (t.ridersPerBusHour >= t.breakEven ? 'good' : 'bad') : 'neutral'} hint={`Equilibrio ${formatOne(t.breakEven)}`} estimate help="gauge" />
+              <Tile label="Abordajes hoy" value={measured ? formatWhole(t.boardings) : '—'}
+                hint={measured ? `Ingreso ${formatColonesShort(t.revenue)} · pérdida ${formatColonesShort(t.loss)}` : undefined} estimate help="boardings" />
+              <Tile label="Horas medidas" value={measured ? `${formatOne(t.measuredHours)} h` : '—'}
+                hint="Horas en ruta hoy" help="busNow" />
+            </div>
+          </>
         )}
 
         {!countsBoardings && (

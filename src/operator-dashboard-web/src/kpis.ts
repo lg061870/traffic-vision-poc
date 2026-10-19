@@ -226,7 +226,9 @@ export const formatPercent = (value: number) => `${whole.format(value)} %`
 
 /** ₡10 642 368 → ₡10,6 M; ₡959 133 → ₡959 k, for cards where space is short. */
 export function formatColonesShort(value: number) {
-  if (Math.abs(value) >= 1_000_000) return `₡${oneDecimal.format(value / 1_000_000)} M`
-  if (Math.abs(value) >= 1_000) return `₡${whole.format(value / 1_000)} k`
+  const sign = value < 0 ? '-' : ''
+  const abs = Math.abs(value)
+  if (abs >= 1_000_000) return `${sign}₡${oneDecimal.format(abs / 1_000_000)} M`
+  if (abs >= 1_000) return `${sign}₡${whole.format(abs / 1_000)} k`
   return formatColones(value)
 }

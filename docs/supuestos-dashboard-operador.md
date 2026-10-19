@@ -34,9 +34,9 @@ Cada valor se clasifica así:
 | Diésel | ₡785/L | Fuente secundaria | Precio aprobado por ARESEP, octubre 2026 (Monumental) |
 | Salario mínimo, chofer de vehículo pesado | ₡419 756/mes | Fuente secundaria | Decreto de salarios mínimos 2026 (Alegra) |
 | Tipo de cambio | ₡455 por US$ | Fuente secundaria | Junio 2026 (Observador) |
-| Flota, rutas, capacidades y demanda | 43 buses, 11 rutas | Simulado | Sección 7 |
-| Pasajeros de la ruta 142 | ≈395 800 al mes (≈13 200 al día), 12 ramales | Oficial, **todavía no aplicado** | ARESEP RE-0060-IT-2024 (sección 8) |
-| Población de los distritos atendidos | 193 478 habitantes | Oficial, **todavía no aplicado** | INEC, Estimación de Población y Vivienda 2022 (sección 8) |
+| Flota autorizada CTP | 39 buses (24 troncales, 15 ramales) | Oficial | CTP Oficio CTP-DT-DAC-INF-0557-2023, ARESEP RE-0025-IT-2024 |
+| Pasajeros de la ruta 142 | 395 787 al mes (~13 012 al día), 12 ramales | Oficial | ARESEP RE-0025-IT-2024 / ET-004-2024 (La Gaceta 76, Alcance 82) |
+| Población de los distritos atendidos | 193 478 habitantes (12,0 % adulto mayor) | Oficial | INEC, Estimación de Población y Vivienda 2022 (sección 8) |
 
 ## 3. Tarifas
 

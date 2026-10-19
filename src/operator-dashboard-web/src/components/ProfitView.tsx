@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import type { Assumptions } from '../config/operatorSettings'
 import { formatColonesShort, formatOne, formatWhole, periodLabels, rowsInPeriod, totals, type Period, type UsageRow } from '../kpis'
 import { Gauge } from './Gauge'
+import { GaugeBreakdownModal } from './GaugeBreakdownModal'
 import { HelpButton } from './HelpButton'
 import { Heatmap } from './Heatmap'
 import { HourlyChart } from './HourlyChart'
+import { HourDetailModal } from './HourDetailModal'
 import { LoadStack } from './LoadStack'
 import { Tile } from './Tile'
 
@@ -21,6 +24,9 @@ interface ProfitViewProps {
 }
 
 export function ProfitView({ rows, dayLabel, routeIds, routeNames, assumptions, selectedRoute, period, onSelectRoute }: ProfitViewProps) {
+  const [diagnostic, setDiagnostic] = useState<{ hour: number; routeId: string | null } | null>(null)
+  const [showBreakdown, setShowBreakdown] = useState(false)
+
   // The cards, gauge and hourly bars follow both filters; the heatmap keeps every route for context.
   const routeRows = selectedRoute ? rows.filter((row) => row.routeId === selectedRoute) : rows
   const scoped = rowsInPeriod(routeRows, period)
@@ -38,23 +44,51 @@ export function ProfitView({ rows, dayLabel, routeIds, routeNames, assumptions, 
           hint={measured ? `${formatOne(t.lossHours)} horas-bus no cubrieron su costo` : undefined} estimate help="loss" />
       </div>
 
-      <section className="panel gauge-panel">
+      <section
+        className="panel gauge-panel gauge-panel-interactive"
+        onClick={() => setShowBreakdown(true)}
+        title="Haga clic en cualquier parte del reloj o en el número para ver el desglose horario y por ruta"
+      >
         <HelpButton topic="gauge" />
-        <h3>Abordajes por hora-bus</h3>
-        <Gauge value={t.ridersPerBusHour} breakEven={t.breakEven} measured={measured} />
+        <div className="gauge-title-row">
+          <h3>Abordajes por hora-bus</h3>
+        </div>
+        <Gauge
+          value={t.ridersPerBusHour}
+          breakEven={t.breakEven}
+          measured={measured}
+          onClick={() => setShowBreakdown(true)}
+        />
       </section>
 
       <section className="panel hourly-panel">
         <HelpButton topic="hourly" />
         <h3>¿Qué horas pagan su costo? <span className="hint">verde: cubre su costo · rojo: no lo cubre</span></h3>
-        <HourlyChart rows={routeRows} assumptions={assumptions} mode="riders" period={period} />
+        <HourlyChart
+          rows={routeRows}
+          assumptions={assumptions}
+          mode="riders"
+          period={period}
+          selectedRoute={selectedRoute}
+          routeNames={routeNames}
+          onSelectRoute={onSelectRoute}
+          onOpenDiagnostic={(hour) => setDiagnostic({ hour, routeId: selectedRoute })}
+        />
       </section>
 
       <section className="panel heatmap-panel">
         <HelpButton topic="heatmap" />
-        <h3>Ruta × hora <span className="hint">abordajes por hora-bus contra el equilibrio de cada ruta · toque una ruta para filtrar</span></h3>
-        <Heatmap rows={rows} routeIds={routeIds} routeNames={routeNames} assumptions={assumptions}
-          selectedRoute={selectedRoute} period={period} onSelectRoute={onSelectRoute} />
+        <h3>Ruta × hora <span className="hint">toque un cuadro para diagnosticar esa ruta y hora · toque la hora arriba para toda la flota</span></h3>
+        <Heatmap
+          rows={rows}
+          routeIds={routeIds}
+          routeNames={routeNames}
+          assumptions={assumptions}
+          selectedRoute={selectedRoute}
+          period={period}
+          onSelectRoute={onSelectRoute}
+          onOpenDiagnostic={(hour, routeId) => setDiagnostic({ hour, routeId })}
+        />
         <ul className="legend">
           <li><i style={{ background: 'var(--heat-bad)' }} />Muy por debajo</li>
           <li><i style={{ background: 'var(--heat-weak)' }} />Debajo del equilibrio</li>
@@ -69,6 +103,45 @@ export function ProfitView({ rows, dayLabel, routeIds, routeNames, assumptions, 
         <LoadStack rows={rowsInPeriod(rows, period)} routeIds={routeIds}
           routeNames={routeNames} selectedRoute={selectedRoute} onSelectRoute={onSelectRoute} />
       </section>
+
+      {/* Shared Diagnostic Modal: accessible from both HourlyChart and Heatmap */}
+      {diagnostic !== null && (
+        <HourDetailModal
+          hour={diagnostic.hour}
+          routeId={diagnostic.routeId}
+          allRows={rows}
+          assumptions={assumptions}
+          routeNames={routeNames}
+          routeIds={routeIds}
+          onChangeRoute={(newRouteId) => setDiagnostic({ hour: diagnostic.hour, routeId: newRouteId })}
+          onSelectRoute={(newRouteId) => {
+            onSelectRoute(newRouteId)
+            setDiagnostic({ hour: diagnostic.hour, routeId: newRouteId })
+          }}
+          onClose={() => setDiagnostic(null)}
+        />
+      )}
+
+      {/* Productivity Breakdown Modal: opened by clicking on the Gauge or its numbers */}
+      {showBreakdown && (
+        <GaugeBreakdownModal
+          rows={scoped}
+          assumptions={assumptions}
+          routeNames={routeNames}
+          period={period}
+          selectedRoute={selectedRoute}
+          dayLabel={dayLabel}
+          onClose={() => setShowBreakdown(false)}
+          onSelectRoute={(newRouteId) => {
+            onSelectRoute(newRouteId)
+            setShowBreakdown(false)
+          }}
+          onOpenDiagnosticHour={(hour) => {
+            setShowBreakdown(false)
+            setDiagnostic({ hour, routeId: selectedRoute })
+          }}
+        />
+      )}
     </div>
   )
 }

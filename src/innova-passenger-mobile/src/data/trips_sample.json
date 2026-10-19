@@ -1,0 +1,266 @@
+{
+  "sample_ipis_to_sj": {
+    "from": { "lat": 9.9620, "lon": -84.0300 },
+    "to": { "lat": 9.9330, "lon": -84.0790 },
+    "generatedAt": "2026-10-12T07:15:00Z",
+    "message": null,
+    "options": [
+      {
+        "departAt": "2026-10-12T07:15:00Z",
+        "arriveAt": "2026-10-12T08:03:00Z",
+        "durationMinutes": 48.0,
+        "transfers": 0,
+        "warnings": [],
+        "legs": [
+          {
+            "type": "WALK",
+            "from": { "name": "Origen (Ipís)", "lat": 9.9620, "lon": -84.0300, "stopId": null },
+            "to": { "name": "Ruta 142 · Parada 18", "lat": 9.9643, "lon": -84.0329, "stopId": "R142-18" },
+            "departAt": "2026-10-12T07:15:00Z",
+            "arriveAt": "2026-10-12T07:21:00Z",
+            "minutes": 6.0,
+            "meters": 420,
+            "bus": null
+          },
+          {
+            "type": "BUS",
+            "from": { "name": "Ruta 142 · Parada 18", "lat": 9.9643, "lon": -84.0329, "stopId": "R142-18" },
+            "to": { "name": "Terminal San José", "lat": 9.9330, "lon": -84.0790, "stopId": "R142-00" },
+            "departAt": "2026-10-12T07:23:00Z",
+            "arriveAt": "2026-10-12T08:02:00Z",
+            "minutes": 39.0,
+            "meters": 7100,
+            "bus": {
+              "routeId": "R142",
+              "routeName": "Ruta 142",
+              "direction": "INBOUND",
+              "headsign": "San José Centro",
+              "vehicleId": "SJB-2267",
+              "waitMinutes": 2.0,
+              "stops": 16,
+              "vehicle": {
+                "location": { "lat": 9.9660, "lon": -84.0194 },
+                "speedKmh": 28,
+                "headingDeg": 270.0,
+                "passengerCount": 38,
+                "capacity": 90,
+                "percent": 42,
+                "status": "MANY_SEATS_AVAILABLE",
+                "distanceToStopMeters": 1250
+              },
+              "laterBuses": [
+                {
+                  "vehicleId": "SJB-12726",
+                  "arriveAt": "2026-10-12T07:29:00Z",
+                  "passengerCount": 84,
+                  "capacity": 90,
+                  "status": "CRUSHED_STANDING_ROOM_ONLY"
+                },
+                {
+                  "vehicleId": "SJB-10356",
+                  "arriveAt": "2026-10-12T07:35:00Z",
+                  "passengerCount": 30,
+                  "capacity": 90,
+                  "status": "MANY_SEATS_AVAILABLE"
+                }
+              ],
+              "path": [
+                { "lat": 9.9643, "lon": -84.0329 },
+                { "lat": 9.9570, "lon": -84.0450 },
+                { "lat": 9.9480, "lon": -84.0560 },
+                { "lat": 9.9390, "lon": -84.0680 },
+                { "lat": 9.9330, "lon": -84.0790 }
+              ]
+            }
+          },
+          {
+            "type": "WALK",
+            "from": { "name": "Terminal San José", "lat": 9.9330, "lon": -84.0790, "stopId": "R142-00" },
+            "to": { "name": "Destino Final", "lat": 9.9332, "lon": -84.0788, "stopId": null },
+            "departAt": "2026-10-12T08:02:00Z",
+            "arriveAt": "2026-10-12T08:03:00Z",
+            "minutes": 1.0,
+            "meters": 65,
+            "bus": null
+          }
+        ]
+      },
+      {
+        "departAt": "2026-10-12T07:18:00Z",
+        "arriveAt": "2026-10-12T08:09:00Z",
+        "durationMinutes": 51.0,
+        "transfers": 0,
+        "warnings": ["La unidad SJB-12726 reporta alta aglomeración de pasajeros (solo espacio de pie)."],
+        "legs": [
+          {
+            "type": "WALK",
+            "from": { "name": "Origen (Ipís)", "lat": 9.9620, "lon": -84.0300, "stopId": null },
+            "to": { "name": "Ruta 142 · Parada 18", "lat": 9.9643, "lon": -84.0329, "stopId": "R142-18" },
+            "departAt": "2026-10-12T07:15:00Z",
+            "arriveAt": "2026-10-12T07:21:00Z",
+            "minutes": 6.0,
+            "meters": 420,
+            "bus": null
+          },
+          {
+            "type": "BUS",
+            "from": { "name": "Ruta 142 · Parada 18", "lat": 9.9643, "lon": -84.0329, "stopId": "R142-18" },
+            "to": { "name": "Terminal San José", "lat": 9.9330, "lon": -84.0790, "stopId": "R142-00" },
+            "departAt": "2026-10-12T07:29:00Z",
+            "arriveAt": "2026-10-12T08:08:00Z",
+            "minutes": 39.0,
+            "meters": 7100,
+            "bus": {
+              "routeId": "R142",
+              "routeName": "Ruta 142",
+              "direction": "INBOUND",
+              "headsign": "San José Centro",
+              "vehicleId": "SJB-12726",
+              "waitMinutes": 8.0,
+              "stops": 16,
+              "vehicle": {
+                "location": { "lat": 9.9700, "lon": -84.0150 },
+                "speedKmh": 22,
+                "headingDeg": 265.0,
+                "passengerCount": 84,
+                "capacity": 90,
+                "percent": 93,
+                "status": "CRUSHED_STANDING_ROOM_ONLY",
+                "distanceToStopMeters": 2100
+              },
+              "laterBuses": [
+                {
+                  "vehicleId": "SJB-10356",
+                  "arriveAt": "2026-10-12T07:35:00Z",
+                  "passengerCount": 30,
+                  "capacity": 90,
+                  "status": "MANY_SEATS_AVAILABLE"
+                }
+              ],
+              "path": [
+                { "lat": 9.9643, "lon": -84.0329 },
+                { "lat": 9.9570, "lon": -84.0450 },
+                { "lat": 9.9480, "lon": -84.0560 },
+                { "lat": 9.9390, "lon": -84.0680 },
+                { "lat": 9.9330, "lon": -84.0790 }
+              ]
+            }
+          },
+          {
+            "type": "WALK",
+            "from": { "name": "Terminal San José", "lat": 9.9330, "lon": -84.0790, "stopId": "R142-00" },
+            "to": { "name": "Destino Final", "lat": 9.9332, "lon": -84.0788, "stopId": null },
+            "departAt": "2026-10-12T08:08:00Z",
+            "arriveAt": "2026-10-12T08:09:00Z",
+            "minutes": 1.0,
+            "meters": 65,
+            "bus": null
+          }
+        ]
+      }
+    ]
+  },
+  "sample_transfer_coronado": {
+    "from": { "lat": 9.9843, "lon": -84.0154 },
+    "to": { "lat": 9.9620, "lon": -84.0300 },
+    "generatedAt": "2026-10-12T07:15:00Z",
+    "message": null,
+    "options": [
+      {
+        "departAt": "2026-10-12T07:15:00Z",
+        "arriveAt": "2026-10-12T07:49:00Z",
+        "durationMinutes": 34.0,
+        "transfers": 1,
+        "warnings": ["Transbordo requerido en la Terminal Central de Coronado."],
+        "legs": [
+          {
+            "type": "WALK",
+            "from": { "name": "Dulce Nombre", "lat": 9.9843, "lon": -84.0154, "stopId": null },
+            "to": { "name": "Parada Dulce Nombre Centro", "lat": 9.9835, "lon": -84.0145, "stopId": "R142-DN-01" },
+            "departAt": "2026-10-12T07:15:00Z",
+            "arriveAt": "2026-10-12T07:18:00Z",
+            "minutes": 3.0,
+            "meters": 180,
+            "bus": null
+          },
+          {
+            "type": "BUS",
+            "from": { "name": "Parada Dulce Nombre Centro", "lat": 9.9835, "lon": -84.0145, "stopId": "R142-DN-01" },
+            "to": { "name": "Terminal Central Coronado", "lat": 9.9761, "lon": -84.0073, "stopId": "R142-TERM" },
+            "departAt": "2026-10-12T07:20:00Z",
+            "arriveAt": "2026-10-12T07:30:00Z",
+            "minutes": 10.0,
+            "meters": 2100,
+            "bus": {
+              "routeId": "R142-DN",
+              "routeName": "Ramal Dulce Nombre",
+              "direction": "INBOUND",
+              "headsign": "Terminal Coronado",
+              "vehicleId": "SJB-4102",
+              "waitMinutes": 2.0,
+              "stops": 5,
+              "vehicle": {
+                "location": { "lat": 9.9850, "lon": -84.0160 },
+                "speedKmh": 25,
+                "headingDeg": 160.0,
+                "passengerCount": 24,
+                "capacity": 70,
+                "percent": 34,
+                "status": "MANY_SEATS_AVAILABLE",
+                "distanceToStopMeters": 350
+              },
+              "laterBuses": [],
+              "path": [
+                { "lat": 9.9835, "lon": -84.0145 },
+                { "lat": 9.9761, "lon": -84.0073 }
+              ]
+            }
+          },
+          {
+            "type": "BUS",
+            "from": { "name": "Terminal Central Coronado", "lat": 9.9761, "lon": -84.0073, "stopId": "R142-TERM" },
+            "to": { "name": "Parada Ipís Central", "lat": 9.9620, "lon": -84.0300, "stopId": "R142-IPIS" },
+            "departAt": "2026-10-12T07:34:00Z",
+            "arriveAt": "2026-10-12T07:47:00Z",
+            "minutes": 13.0,
+            "meters": 3400,
+            "bus": {
+              "routeId": "R142",
+              "routeName": "Ruta 142 Troncal",
+              "direction": "INBOUND",
+              "headsign": "San José Centro",
+              "vehicleId": "SJB-2267",
+              "waitMinutes": 4.0,
+              "stops": 8,
+              "vehicle": {
+                "location": { "lat": 9.9770, "lon": -84.0050 },
+                "speedKmh": 30,
+                "headingDeg": 240.0,
+                "passengerCount": 40,
+                "capacity": 90,
+                "percent": 44,
+                "status": "MANY_SEATS_AVAILABLE",
+                "distanceToStopMeters": 400
+              },
+              "laterBuses": [],
+              "path": [
+                { "lat": 9.9761, "lon": -84.0073 },
+                { "lat": 9.9620, "lon": -84.0300 }
+              ]
+            }
+          },
+          {
+            "type": "WALK",
+            "from": { "name": "Parada Ipís Central", "lat": 9.9620, "lon": -84.0300, "stopId": "R142-IPIS" },
+            "to": { "name": "Destino (Ipís)", "lat": 9.9620, "lon": -84.0300, "stopId": null },
+            "departAt": "2026-10-12T07:47:00Z",
+            "arriveAt": "2026-10-12T07:49:00Z",
+            "minutes": 2.0,
+            "meters": 110,
+            "bus": null
+          }
+        ]
+      }
+    ]
+  }
+}

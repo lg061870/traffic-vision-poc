@@ -1,0 +1,112 @@
+[
+  {
+    "vehicleId": "SJB-2267",
+    "routeId": "R142",
+    "routeName": "Ruta 142 Troncal",
+    "headsign": "San José Centro",
+    "lat": 9.9660,
+    "lon": -84.0194,
+    "speedKmh": 28,
+    "headingDeg": 270,
+    "passengerCount": 38,
+    "capacity": 90,
+    "percent": 42,
+    "status": "MANY_SEATS_AVAILABLE",
+    "history": [
+      { "time": "06:45", "passengers": 12, "percent": 13 },
+      { "time": "06:50", "passengers": 22, "percent": 24 },
+      { "time": "06:55", "passengers": 31, "percent": 34 },
+      { "time": "07:00", "passengers": 35, "percent": 38 },
+      { "time": "07:05", "passengers": 44, "percent": 48 },
+      { "time": "07:10", "passengers": 38, "percent": 42 }
+    ]
+  },
+  {
+    "vehicleId": "SJB-12726",
+    "routeId": "R142",
+    "routeName": "Ruta 142 Troncal",
+    "headsign": "San José Centro",
+    "lat": 9.9570,
+    "lon": -84.0450,
+    "speedKmh": 22,
+    "headingDeg": 265,
+    "passengerCount": 84,
+    "capacity": 90,
+    "percent": 93,
+    "status": "CRUSHED_STANDING_ROOM_ONLY",
+    "history": [
+      { "time": "06:45", "passengers": 40, "percent": 44 },
+      { "time": "06:50", "passengers": 58, "percent": 64 },
+      { "time": "06:55", "passengers": 72, "percent": 80 },
+      { "time": "07:00", "passengers": 80, "percent": 88 },
+      { "time": "07:05", "passengers": 88, "percent": 97 },
+      { "time": "07:10", "passengers": 84, "percent": 93 }
+    ]
+  },
+  {
+    "vehicleId": "SJB-10356",
+    "routeId": "R142",
+    "routeName": "Ruta 142 Troncal",
+    "headsign": "Terminal Coronado",
+    "lat": 9.9480,
+    "lon": -84.0560,
+    "speedKmh": 34,
+    "headingDeg": 60,
+    "passengerCount": 26,
+    "capacity": 90,
+    "percent": 28,
+    "status": "MANY_SEATS_AVAILABLE",
+    "history": [
+      { "time": "06:45", "passengers": 55, "percent": 61 },
+      { "time": "06:50", "passengers": 46, "percent": 51 },
+      { "time": "06:55", "passengers": 38, "percent": 42 },
+      { "time": "07:00", "passengers": 30, "percent": 33 },
+      { "time": "07:05", "passengers": 24, "percent": 26 },
+      { "time": "07:10", "passengers": 26, "percent": 28 }
+    ]
+  },
+  {
+    "vehicleId": "SJB-4102",
+    "routeId": "R142-DN",
+    "routeName": "Ramal Dulce Nombre",
+    "headsign": "Terminal Coronado",
+    "lat": 9.9850,
+    "lon": -84.0160,
+    "speedKmh": 25,
+    "headingDeg": 160,
+    "passengerCount": 24,
+    "capacity": 70,
+    "percent": 34,
+    "status": "MANY_SEATS_AVAILABLE",
+    "history": [
+      { "time": "06:45", "passengers": 10, "percent": 14 },
+      { "time": "06:50", "passengers": 15, "percent": 21 },
+      { "time": "06:55", "passengers": 20, "percent": 28 },
+      { "time": "07:00", "passengers": 22, "percent": 31 },
+      { "time": "07:05", "passengers": 25, "percent": 35 },
+      { "time": "07:10", "passengers": 24, "percent": 34 }
+    ]
+  },
+  {
+    "vehicleId": "SJB-5589",
+    "routeId": "R142-SA",
+    "routeName": "Ramal San Antonio",
+    "headsign": "San Antonio de Coronado",
+    "lat": 9.9720,
+    "lon": -84.0210,
+    "speedKmh": 30,
+    "headingDeg": 110,
+    "passengerCount": 52,
+    "capacity": 75,
+    "percent": 69,
+    "status": "FEW_SEATS_AVAILABLE",
+    "history": [
+      { "time": "06:45", "passengers": 32, "percent": 42 },
+      { "time": "06:50", "passengers": 40, "percent": 53 },
+      { "time": "06:55", "passengers": 48, "percent": 64 },
+      { "time": "07:00", "passengers": 55, "percent": 73 },
+      { "time": "07:05", "passengers": 54, "percent": 72 },
+      { "time": "07:10", "passengers": 52, "percent": 69 }
+    ]
+  }
+]

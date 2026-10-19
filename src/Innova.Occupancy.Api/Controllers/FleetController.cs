@@ -35,7 +35,13 @@ public sealed class FleetController(VehicleStateStore store, FleetRegistry fleet
         }
 
         var buses = store.GetHourlyUsage(start, end)
-            .Select(bus => new BusHourlyUsage(bus.VehicleId, fleet.RouteOf(bus.VehicleId), fleet.CapacityOf(bus.VehicleId), bus.Hours))
+            .Select(bus =>
+            {
+                var state = store.Get(bus.VehicleId);
+                var routeId = state?.Trip?.RouteId ?? fleet.RouteOf(bus.VehicleId);
+                var capacity = state?.Occupancy?.Capacity ?? fleet.CapacityOf(bus.VehicleId);
+                return new BusHourlyUsage(bus.VehicleId, routeId, capacity, bus.Hours);
+            })
             .ToArray();
         return Ok(new FleetHourlyUsage(start, end, buses));
     }

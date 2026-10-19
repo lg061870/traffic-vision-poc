@@ -1,0 +1,41 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "occupancy-reference-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "src/occupancy-reference-web",
+        "run",
+        "dev"
+      ],
+      "port": 5174
+    },
+    {
+      "name": "operator-dashboard-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "src/operator-dashboard-web",
+        "run",
+        "dev"
+      ],
+      "port": 5175
+    },
+    {
+      "name": "innobus-video",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "src/innobus-video",
+        "run",
+        "dev",
+        "--",
+        "--port=3010",
+        "--no-open"
+      ],
+      "port": 3010
+    }
+  ]
+}

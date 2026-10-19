@@ -1,0 +1,98 @@
+[
+  {
+    "id": "p-morazan",
+    "name": "Parque Morazán, San José",
+    "aliases": ["morazan", "san jose centro", "parque morazan", "chepe", "san jose"],
+    "lat": 9.9352,
+    "lon": -84.0754,
+    "category": "HITO"
+  },
+  {
+    "id": "term-sj",
+    "name": "Terminal San José (Calle 3, Ave 5)",
+    "aliases": ["terminal san jose", "parada coronado san jose", "terminal chepe", "calle 3"],
+    "lat": 9.9330,
+    "lon": -84.0790,
+    "category": "PARADA"
+  },
+  {
+    "id": "guadalupe",
+    "name": "Guadalupe Centro (Parque)",
+    "aliases": ["guadalupe", "parque de guadalupe", "cruce guadalupe"],
+    "lat": 9.9480,
+    "lon": -84.0560,
+    "category": "HITO"
+  },
+  {
+    "id": "ipis",
+    "name": "Ipís de Goicoechea",
+    "aliases": ["ipis", "plaza ipis", "ebais ipis"],
+    "lat": 9.9620,
+    "lon": -84.0300,
+    "category": "HITO"
+  },
+  {
+    "id": "patalillo",
+    "name": "Patalillo de Coronado",
+    "aliases": ["patalillo", "san antonio patalillo"],
+    "lat": 9.9735,
+    "lon": -84.0264,
+    "category": "HITO"
+  },
+  {
+    "id": "term-coronado",
+    "name": "Terminal Central de Coronado",
+    "aliases": ["terminal coronado", "parada central coronado", "san isidro centro"],
+    "lat": 9.9761,
+    "lon": -84.0073,
+    "category": "PARADA"
+  },
+  {
+    "id": "don-pancho",
+    "name": "Mall Don Pancho (Coronado)",
+    "aliases": ["mall don pancho", "don pancho", "banco nacional coronado"],
+    "lat": 9.9748,
+    "lon": -84.0112,
+    "category": "HITO"
+  },
+  {
+    "id": "dulce-nombre",
+    "name": "Dulce Nombre de Coronado",
+    "aliases": ["dulce nombre", "iglesia dulce nombre"],
+    "lat": 9.9843,
+    "lon": -84.0154,
+    "category": "HITO"
+  },
+  {
+    "id": "las-nubes",
+    "name": "Las Nubes de Coronado",
+    "aliases": ["las nubes", "nubes", "montana coronado"],
+    "lat": 9.9882,
+    "lon": -83.9605,
+    "category": "HITO"
+  },
+  {
+    "id": "cascajal",
+    "name": "Cascajal de Coronado",
+    "aliases": ["cascajal", "lecheria cascajal"],
+    "lat": 10.0377,
+    "lon": -83.9298,
+    "category": "HITO"
+  },
+  {
+    "id": "san-rafael",
+    "name": "San Rafael de Coronado",
+    "aliases": ["san rafael", "plaza san rafael"],
+    "lat": 9.9807,
+    "lon": -83.9918,
+    "category": "HITO"
+  },
+  {
+    "id": "ucr",
+    "name": "Universidad de Costa Rica (San Pedro)",
+    "aliases": ["ucr", "universidad de costa rica", "rodrigo facio", "san pedro"],
+    "lat": 9.9378,
+    "lon": -84.0519,
+    "category": "HITO"
+  }
+]

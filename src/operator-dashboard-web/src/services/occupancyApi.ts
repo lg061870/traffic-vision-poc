@@ -1,3 +1,4 @@
+import type { SimulationParameters } from '../config/operatorSettings'
 import type { FleetHourlyUsage, VehicleList } from '../types/occupancy'
 
 // Empty by default: Vite proxies /api to the Occupancy API (see vite.config.ts).
@@ -22,4 +23,33 @@ export function getVehicles(signal?: AbortSignal) {
 export function getFleetHourly(range: { from: Date; to: Date } | null, signal?: AbortSignal) {
   const query = range ? `?${new URLSearchParams({ from: range.from.toISOString(), to: range.to.toISOString() })}` : ''
   return getJson<FleetHourlyUsage>(`/api/v1/fleet/hourly${query}`, signal)
+}
+
+export function getSimulationParameters(signal?: AbortSignal) {
+  return getJson<SimulationParameters>('/api/v1/simulation/parameters', signal)
+}
+
+export async function updateSimulationParameters(parameters: SimulationParameters, signal?: AbortSignal): Promise<void> {
+  const response = await fetch(`${baseUrl}/api/v1/simulation/parameters`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(parameters),
+    signal,
+  })
+  if (!response.ok) {
+    const problem = await response.json().catch(() => null)
+    throw new Error(problem?.title ?? `HTTP ${response.status}`)
+  }
+}
+
+export async function resetSimulationParameters(signal?: AbortSignal): Promise<void> {
+  const response = await fetch(`${baseUrl}/api/v1/simulation/reset`, {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+    signal,
+  })
+  if (!response.ok) {
+    const problem = await response.json().catch(() => null)
+    throw new Error(problem?.title ?? `HTTP ${response.status}`)
+  }
 }

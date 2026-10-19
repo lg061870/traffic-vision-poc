@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>INNOBUS — Pitch Ejecutivo Autobuses Unidos de Coronado</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Top Navigation bar */
+    header {
+      height: 56px;
+      padding: 0 24px;
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: #fff;
+      font-weight: 800;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-name {
+      font-size: 16px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+    }
+
+    .client-badge {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1d4ed8;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      padding: 3px 10px;
+      border-radius: 999px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .timer-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #059669;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-top {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      color: #1e293b;
+      transition: all 0.15s ease;
+    }
+
+    .btn-top:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-top.primary {
+      background: linear-gradient(135deg, #1d4ed8, #2563eb);
+      color: #ffffff;
+      border-color: #1d4ed8;
+    }
+
+    /* Main viewport canvas */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 18px;
+      background: #090e17;
+      position: relative;
+    }
+
+    .slide-stage {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .slide-img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 16px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 1px rgba(255, 255, 255, 0.2);
+      display: none;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .slide-img.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.99); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* Floating navigation arrows on left & right edges */
+    .arrow-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      z-index: 50;
+    }
+
+    .arrow-btn:hover:not(:disabled) {
+      background: #2563eb;
+      border-color: #3b82f6;
+      transform: translateY(-50%) scale(1.08);
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.5);
+    }
+
+    .arrow-btn:disabled {
+      opacity: 0.2;
+      cursor: not-allowed;
+    }
+
+    .arrow-btn.prev { left: 24px; }
+    .arrow-btn.next { right: 24px; }
+
+    /* Bottom Control Strip */
+    footer {
+      height: 52px;
+      padding: 0 24px;
+      background: #ffffff;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+
+    .dots-strip {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .dot-pill {
+      height: 8px;
+      width: 24px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .dot-pill:hover {
+      background: #94a3b8;
+    }
+
+    .dot-pill.active {
+      background: #2563eb;
+      width: 44px;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+    }
+
+    .slide-info {
+      font-size: 13px;
+      font-weight: 700;
+      color: #475569;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .shortcuts {
+      font-size: 11.5px;
+      color: #64748b;
+    }
+
+    kbd {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #1e293b;
+    }
+
+    /* Video Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(6px);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #000;
+      border-radius: 20px;
+      overflow: hidden;
+      max-width: 960px;
+      width: 100%;
+      position: relative;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    .modal-close:hover {
+      background: #ef4444;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">IN</div>
+      <span class="brand-name">INNOBUS</span>
+      <span class="client-badge">Autobuses Unidos de Coronado S.A. · Ruta 142</span>
+    </div>
+
+    <div class="header-actions">
+      <!-- 10-Minute Presenter Timer -->
+      <div id="timer-pill" class="timer-pill" title="Clic para pausar o reanudar cronómetro">
+        <span>⏱️</span>
+        <strong id="timer-display" style="font-family:'JetBrains Mono',monospace;">10:00</strong>
+        <span id="timer-state" style="font-size:10px; opacity:0.8;">PAUSAR</span>
+      </div>
+
+      <button id="btn-video" class="btn-top">
+        <span>📱 Video App</span>
+      </button>
+
+      <a href="/" class="btn-top primary">
+        <span>🗺 Ir al Dashboard en Vivo</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Slide Canvas -->
+  <main>
+    <button id="btn-prev" class="arrow-btn prev" title="Anterior (←)">←</button>
+
+    <div class="slide-stage">
+      <img src="/assets/slide1_official.jpg" alt="Slide 1: ¿Cuánto dinero pierde su flota?" class="slide-img active" id="slide-0" />
+      <img src="/assets/slide2_official.jpg" alt="Slide 2: El Desafío Real de la Operación" class="slide-img" id="slide-1" />
+      <img src="/assets/slide3_official.jpg" alt="Slide 3: Control Total en una Sola Pantalla" class="slide-img" id="slide-2" />
+      <img src="/assets/slide4_official.jpg" alt="Slide 4: La App del Pasajero y Fidelización" class="slide-img" id="slide-3" />
+      <img src="/assets/slide5_official.jpg" alt="Slide 5: Propuesta de Piloto Sin Riesgo" class="slide-img" id="slide-4" />
+      <img src="/assets/slide6_official.jpg" alt="Slide 6: Qué se Lleva la Empresa (ROI)" class="slide-img" id="slide-5" />
+      <img src="/assets/slide7_official.jpg" alt="Slide 7: Alianza y Siguiente Paso" class="slide-img" id="slide-6" />
+    </div>
+
+    <button id="btn-next" class="arrow-btn next" title="Siguiente (→)">→</button>
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <footer>
+    <div class="dots-strip" id="dots-strip"></div>
+
+    <div class="slide-info" id="slide-counter">
+      1 / 7
+    </div>
+
+    <div class="shortcuts">
+      Teclas: <kbd>→</kbd> <kbd>←</kbd> o <kbd>Espacio</kbd> · <kbd>F</kbd> Pantalla completa
+    </div>
+  </footer>
+
+  <!-- Video Modal -->
+  <div id="video-modal" class="modal-overlay">
+    <div class="modal-box">
+      <button id="modal-close" class="modal-close">✕</button>
+      <video id="modal-video" src="/demo/innobus-app-flow.mp4" controls style="width:100%; height:auto; max-height:85vh; display:block;"></video>
+    </div>
+  </div>
+
+  <script>
+    const slides = document.querySelectorAll('.slide-img');
+    const totalSlides = slides.length;
+    let currentSlide = 0;
+
+    const dotsStrip = document.getElementById('dots-strip');
+    const slideCounter = document.getElementById('slide-counter');
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+
+    // Create interactive pill dots
+    slides.forEach((_, idx) => {
+      const dot = document.createElement('button');
+      dot.className = `dot-pill ${idx === 0 ? 'active' : ''}`;
+      dot.title = `Ir a diapositiva ${idx + 1}`;
+      dot.addEventListener('click', () => goToSlide(idx));
+      dotsStrip.appendChild(dot);
+    });
+
+    const dots = document.querySelectorAll('.dot-pill');
+
+    function goToSlide(index) {
+      if (index < 0 || index >= totalSlides) return;
+      slides[currentSlide].classList.remove('active');
+      dots[currentSlide].classList.remove('active');
+
+      currentSlide = index;
+
+      slides[currentSlide].classList.add('active');
+      dots[currentSlide].classList.add('active');
+
+      slideCounter.textContent = `${currentSlide + 1} / ${totalSlides}`;
+      btnPrev.disabled = currentSlide === 0;
+      btnNext.disabled = currentSlide === totalSlides - 1;
+    }
+
+    btnPrev.addEventListener('click', () => goToSlide(currentSlide - 1));
+    btnNext.addEventListener('click', () => goToSlide(currentSlide + 1));
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+        e.preventDefault();
+        goToSlide(currentSlide + 1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        goToSlide(currentSlide - 1);
+      } else if (e.key === 'f' || e.key === 'F') {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen();
+        } else {
+          document.exitFullscreen();
+        }
+      }
+    });
+
+    // 10-Minute Presenter Timer
+    let secondsRemaining = 600;
+    let timerRunning = true;
+    const timerDisplay = document.getElementById('timer-display');
+    const timerState = document.getElementById('timer-state');
+    const timerPill = document.getElementById('timer-pill');
+
+    setInterval(() => {
+      if (!timerRunning) return;
+      if (secondsRemaining > 0) {
+        secondsRemaining--;
+        const mins = Math.floor(secondsRemaining / 60);
+        const secs = secondsRemaining % 60;
+        timerDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+        if (secondsRemaining < 120) {
+          timerPill.style.background = '#fef2f2';
+          timerPill.style.borderColor = '#fca5a5';
+          timerPill.style.color = '#dc2626';
+        }
+      }
+    }, 1000);
+
+    timerPill.addEventListener('click', () => {
+      timerRunning = !timerRunning;
+      timerState.textContent = timerRunning ? 'PAUSAR' : 'REANUDAR';
+    });
+
+    // Video modal handlers
+    const videoModal = document.getElementById('video-modal');
+    const modalVideo = document.getElementById('modal-video');
+    const modalClose = document.getElementById('modal-close');
+    const btnVideo = document.getElementById('btn-video');
+
+    function openModal() {
+      videoModal.classList.add('open');
+      modalVideo.play();
+    }
+
+    function closeModal() {
+      videoModal.classList.remove('open');
+      modalVideo.pause();
+    }
+
+    if (btnVideo) btnVideo.addEventListener('click', openModal);
+    if (modalClose) modalClose.addEventListener('click', closeModal);
+    videoModal.addEventListener('click', (e) => {
+      if (e.target === videoModal) closeModal();
+    });
+  </script>
+</body>
+</html>

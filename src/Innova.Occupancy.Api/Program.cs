@@ -34,14 +34,15 @@ builder.Services.AddSingleton<RawAggregator>();
 // One adapter per door-counter format; a real counter only needs its own adapter here.
 builder.Services.AddSingleton<IDoorCounterAdapter, ApcDoorEventsV1Adapter>();
 builder.Services.AddSingleton<DoorCounterAdapterRegistry>();
-builder.Services.AddHostedService<MockFleetSimulator>();
+builder.Services.AddSingleton<MockFleetSimulator>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<MockFleetSimulator>());
 // The Coronado routes and stops, shared by the simulator's buses and the trip planner.
 builder.Services.AddSingleton<TransitNetwork>();
 builder.Services.AddSingleton<TripPlanner>();
 
-// Read access is open while client apps are built against the mock; writes need a device key.
+// Read and simulation controls are open for dashboards and client apps; raw telemetry writes need a device key.
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
-    policy.AllowAnyOrigin().AllowAnyHeader().WithMethods("GET")));
+    policy.AllowAnyOrigin().AllowAnyHeader().WithMethods("GET", "POST", "PUT", "OPTIONS")));
 
 var app = builder.Build();
 

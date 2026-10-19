@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react'
-import { GeoJSON, MapContainer, Marker, TileLayer, Tooltip, useMap } from 'react-leaflet'
-import { geoJSON, latLng, point, type PathOptions } from 'leaflet'
+import { useEffect, useMemo, useRef } from 'react'
+import { GeoJSON, MapContainer, Marker, TileLayer, Tooltip, Popup, useMap } from 'react-leaflet'
+import { divIcon, geoJSON, latLng, point, type PathOptions } from 'leaflet'
 import type { Feature, FeatureCollection } from 'geojson'
 import type { VehicleState } from '../types/occupancy'
 import { statusDisplay, vehicleColor } from '../display'
 import { busIcon } from './busIcon'
+import { officialCtpRoutes, type RouteStop } from '../config/ctpRoutesData'
 
 const coronado: [number, number] = [9.955, -84.03]
 
@@ -19,6 +20,8 @@ interface FleetMapProps {
   follow?: boolean
   /** Flies to the selected bus each time a different bus is selected (the main map). */
   zoomToSelected?: boolean
+  /** Controls visibility of CTP bus stops along routes (defaults to true). */
+  showStops?: boolean
   onSelect: (vehicleId: string) => void
 }
 
@@ -26,16 +29,114 @@ interface FleetMapProps {
 const drawerWidth = 460
 const busZoom = 16
 
+const routeColorMap: Record<string, string> = {
+  R142: '#1d4ed8', // Dark Blue - Troncal
+  'R142-01': '#0284c7', // Sky Blue - Cascajal
+  'R142-02': '#0d9488', // Teal - Las Nubes
+  'R142-03': '#16a34a', // Emerald - Dulce Nombre
+  'R142-04': '#ca8a04', // Amber - Patio de Agua
+  'R142-05': '#ea580c', // Orange - San Rafael
+  'R142-06': '#e11d48', // Rose - Patalillo
+  'R142-07': '#8b5cf6', // Violet - Los Ángeles
+  'R142-08': '#4f46e5', // Indigo - San Antonio
+  'R142-09': '#06b6d4', // Cyan - San Jerónimo
+  'R142-10': '#d97706', // Gold - La Gallera
+}
+
 function routeStyle(routeId: string | null | undefined) {
   return (feature?: Feature): PathOptions => {
-    const id = feature?.properties?.routeId
+    const id = feature?.properties?.routeId ?? ''
+    const color = routeColorMap[id] ?? '#1d4ed8'
     const focused = routeId ? id === routeId : id === 'R142'
+
+    if (routeId) {
+      return {
+        color: focused ? color : '#94a3b8',
+        weight: focused ? 6 : 2.5,
+        opacity: focused ? 0.95 : 0.35,
+      }
+    }
+
     return {
-      color: focused ? '#1d3fa8' : '#4a63b8',
-      weight: focused ? 5 : 3,
-      opacity: routeId && !focused ? 0.3 : 0.8,
+      color: color,
+      weight: id === 'R142' ? 4.5 : 3,
+      opacity: id === 'R142' ? 0.9 : 0.7,
     }
   }
+}
+
+interface MappedStop extends RouteStop {
+  isTransferHub: boolean
+  isOrigin: boolean
+  isTerminus: boolean
+  stopNumber?: number
+  routeId: string
+  routeName: string
+  color: string
+}
+
+function createStopIcon(
+  stop: MappedStop,
+  isHub: boolean,
+  isOrigin: boolean,
+  isTerminus: boolean,
+  color: string,
+  number?: number,
+) {
+  if (isHub) {
+    return divIcon({
+      className: 'ctp-stop-marker-wrap',
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      popupAnchor: [0, -14],
+      html: `
+        <div class="stop-pin hub-pin" title="${stop.name}">
+          <span class="hub-pulse"></span>
+          <span class="hub-icon">🏢</span>
+        </div>
+      `,
+    })
+  }
+
+  if (isOrigin) {
+    return divIcon({
+      className: 'ctp-stop-marker-wrap',
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+      popupAnchor: [0, -11],
+      html: `
+        <div class="stop-pin origin-pin" style="border-color: ${color};" title="${stop.name}">
+          <span>🟢</span>
+        </div>
+      `,
+    })
+  }
+
+  if (isTerminus) {
+    return divIcon({
+      className: 'ctp-stop-marker-wrap',
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+      popupAnchor: [0, -11],
+      html: `
+        <div class="stop-pin terminus-pin" style="border-color: ${color};" title="${stop.name}">
+          <span>🏁</span>
+        </div>
+      `,
+    })
+  }
+
+  return divIcon({
+    className: 'ctp-stop-marker-wrap',
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+    popupAnchor: [0, -9],
+    html: `
+      <div class="stop-pin regular-pin" style="background: ${color};" title="${stop.name}">
+        <span>${number ?? '•'}</span>
+      </div>
+    `,
+  })
 }
 
 // Shows the whole network, or the selected route, when the routes load or the route filter
@@ -98,8 +199,68 @@ function LabelsByZoom() {
   return null
 }
 
-export function FleetMap({ routes, vehicles, routeId, selectedId, follow = false, zoomToSelected = false, onSelect }: FleetMapProps) {
+export function FleetMap({
+  routes,
+  vehicles,
+  routeId,
+  selectedId,
+  follow = false,
+  zoomToSelected = false,
+  showStops = true,
+  onSelect,
+}: FleetMapProps) {
   const selected = vehicles.find((v) => v.vehicleId === selectedId)
+
+  // Compute stops to display
+  const displayStops = useMemo(() => {
+    if (!showStops) return []
+
+    if (routeId) {
+      // Focus mode: show only stops for the selected route
+      const target = officialCtpRoutes.find((r) => r.routeId === routeId)
+      if (!target) return []
+      return target.stops.map((s, idx) => ({
+        ...s,
+        isTransferHub:
+          s.isTransferHub ||
+          s.name.toLowerCase().includes('terminal central') ||
+          s.name.toLowerCase().includes('terminal coronado'),
+        isOrigin: idx === 0,
+        isTerminus: idx === target.stops.length - 1,
+        stopNumber: idx + 1,
+        routeId: target.routeId,
+        routeName: target.name,
+        color: target.color,
+      }))
+    }
+
+    // All routes mode: collect all stops, deduplicating Terminal Central Coronado
+    const stopMap = new Map<string, MappedStop>()
+    officialCtpRoutes.forEach((route) => {
+      route.stops.forEach((s, idx) => {
+        const isHub =
+          s.isTransferHub ||
+          s.name.toLowerCase().includes('terminal central') ||
+          s.name.toLowerCase().includes('terminal coronado')
+        const key = isHub ? 'hub-coronado' : `${s.lat.toFixed(5)},${s.lon.toFixed(5)}`
+        if (!stopMap.has(key)) {
+          stopMap.set(key, {
+            ...s,
+            isTransferHub: isHub,
+            isOrigin: idx === 0 && !isHub,
+            isTerminus: idx === route.stops.length - 1 && !isHub,
+            stopNumber: isHub ? undefined : idx + 1,
+            routeId: route.routeId,
+            routeName: route.name,
+            color: isHub ? '#dc2626' : route.color,
+          })
+        }
+      })
+    })
+
+    return Array.from(stopMap.values())
+  }, [routeId, showStops])
+
   return (
     <MapContainer center={coronado} zoom={13} className="fleet-map">
       <TileLayer
@@ -112,6 +273,69 @@ export function FleetMap({ routes, vehicles, routeId, selectedId, follow = false
       {follow && <Follow vehicle={selected} />}
       {zoomToSelected && <ZoomToSelected vehicle={selected} />}
       <LabelsByZoom />
+
+      {/* Official CTP Bus Stops along corridors */}
+      {showStops &&
+        displayStops.map((stop) => {
+          const isHub = stop.isTransferHub
+          const isOrigin = stop.isOrigin
+          const isTerminus = stop.isTerminus
+          const icon = createStopIcon(stop, isHub, isOrigin, isTerminus, stop.color, stop.stopNumber)
+
+          return (
+            <Marker
+              key={`${stop.routeId}-${stop.id}`}
+              position={[stop.lat, stop.lon]}
+              icon={icon}
+              zIndexOffset={isHub ? 600 : isOrigin || isTerminus ? 300 : 150}
+            >
+              <Tooltip direction="top" offset={[0, -10]}>
+                <strong>{stop.name}</strong>
+                {isHub && ' · 🏢 NODO TRANSBORDO'}
+                {isOrigin && ' · 🟢 ORIGEN'}
+                {isTerminus && ' · 🏁 RETORNO'}
+                {stop.dwellSec ? ` (~${stop.dwellSec}s)` : ''}
+              </Tooltip>
+              <Popup>
+                <div className="stop-popup-card">
+                  <div className="stop-popup-header">
+                    <span className="stop-popup-tag" style={{ background: stop.color }}>
+                      {stop.routeId}
+                    </span>
+                    <strong style={{ fontSize: '11px', color: '#64748b' }}>
+                      {stop.isTransferHub
+                        ? 'Nodo de Transbordo CTP'
+                        : stop.isOrigin
+                        ? 'Parada de Origen'
+                        : stop.isTerminus
+                        ? 'Parada Retorno / Destino'
+                        : `Parada #${stop.stopNumber}`}
+                    </strong>
+                  </div>
+                  <h4 className="stop-popup-title">{stop.name}</h4>
+                  <div className="stop-popup-details">
+                    <span>
+                      📍 <strong>GPS:</strong> {stop.lat.toFixed(5)}, {stop.lon.toFixed(5)}
+                    </span>
+                    <span>
+                      ⏱ <strong>Espera programada:</strong> ~{stop.dwellSec ?? 30} segundos
+                    </span>
+                    <span>
+                      🛣 <strong>Corredor:</strong> {stop.routeName}
+                    </span>
+                    {isHub && (
+                      <span className="stop-popup-hub-badge">
+                        🏢 Terminal Central Coronado (Intercambio Concesión CTP)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          )
+        })}
+
+      {/* Real-Time Vehicles */}
       {vehicles.map((vehicle) => {
         if (!vehicle.location) return null
         const isSelected = vehicle.vehicleId === selectedId
@@ -120,9 +344,15 @@ export function FleetMap({ routes, vehicles, routeId, selectedId, follow = false
           <Marker
             key={vehicle.vehicleId}
             position={[vehicle.location.lat, vehicle.location.lon]}
-            icon={busIcon(vehicle.vehicleId, vehicleColor(vehicle), vehicle.stale ? null : vehicle.location.headingDeg, isSelected)}
+            icon={busIcon(
+              vehicle.vehicleId,
+              vehicleColor(vehicle),
+              vehicle.stale ? null : vehicle.location.headingDeg,
+              isSelected,
+              vehicle.stale ? null : vehicle.occupancy?.percent,
+            )}
             opacity={vehicle.stale ? 0.75 : 1}
-            zIndexOffset={isSelected ? 1000 : 0}
+            zIndexOffset={isSelected ? 1000 : 400}
             eventHandlers={{ click: () => onSelect(vehicle.vehicleId) }}
           >
             <Tooltip direction="top">

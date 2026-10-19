@@ -19,7 +19,7 @@ Hackathon INNOVA (5G, Costa Rica) prototype for the Coronado bus line (route 142
 - **Publishing is manual only:** the GitHub Actions workflow "Publish to SmarterASP" (`.github/workflows/publish-smarterasp.yml`), Run workflow → pick a site; site2 needs `PUBLICAR` typed. Never make it run on push. The password is the `SMARTERASP_PASSWORD` secret; never ask for it or handle it.
 - SmarterASP runs every site in one shared app pool, so every ASP.NET Core site must be **OutOfProcess**.
 - `data/demo` (the analyzed clip `la_bus_highlights.mp4` and its `.result.json`) is **not in Git**; the workflow downloads it from site5 `/demo`. Don't commit videos.
-- Docs and UI text are in **Spanish** (Costa Rica); code and comments in English.
+- Conversational language with the user is **English** (saved user preference). Docs and UI text remain in **Spanish** (Costa Rica); code and comments in English.
 - Money figures (fares, cost per bus-hour, break-even, population data) and their sources live in `docs/supuestos-dashboard-operador.md`; update it together with `src/operator-dashboard-web/src/config/operatorSettings.ts`. Data is simulated and the UI says so; never present it as the operator's real data.
 
 ## Build and test

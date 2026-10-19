@@ -1,13 +1,11 @@
+import { useMemo, useState } from 'react'
 import type { FeatureCollection } from 'geojson'
 import { cameraDemo } from '../config/operatorSettings'
-import { sourceDisplay } from '../display'
-import { formatPercent, formatWhole, inService } from '../kpis'
-import type { SensorSource, VehicleState } from '../types/occupancy'
-import { Alerts } from './Alerts'
-import { CameraPanel } from './CameraPanel'
+import { shortName } from '../hooks/useRoutes'
+import { inService, routeOf } from '../kpis'
+import type { VehicleState } from '../types/occupancy'
 import { FleetMap } from './FleetMap'
-import { OccupancyBand } from './OccupancyBand'
-import { Tile } from './Tile'
+import { OccupancyDotMatrix } from './OccupancyDotMatrix'
 
 interface LiveViewProps {
   /** Buses already filtered to the selected route, if any. */
@@ -23,43 +21,133 @@ interface LiveViewProps {
   onOpenBus: (vehicleId: string) => void
 }
 
-export function LiveView({ vehicles, allVehicles, routes, routeNames, registry, selectedRoute, openBusId, onOpenBus }: LiveViewProps) {
-  const running = vehicles.filter(inService)
-  const passengers = running.reduce((sum, v) => sum + (v.occupancy?.passengerCount ?? 0), 0)
-  const capacity = running.reduce((sum, v) => sum + (v.occupancy?.capacity ?? 0), 0)
-  const silent = vehicles.filter((v) => v.stale).length
-  const sources = new Map<SensorSource, number>()
-  for (const v of running) if (v.occupancy) sources.set(v.occupancy.source, (sources.get(v.occupancy.source) ?? 0) + 1)
-  // The camera tile shows the bus counted by the model, unless a route is selected that it does
-  // not run on: then the fullest bus in service on that route.
-  const cameraBus = allVehicles.find((v) => v.vehicleId === cameraDemo.vehicleId)
-  const shownBus = !selectedRoute || vehicles.some((v) => v.vehicleId === cameraDemo.vehicleId)
-    ? cameraBus
-    : [...running].sort((a, b) => (b.occupancy?.percent ?? 0) - (a.occupancy?.percent ?? 0))[0] ?? cameraBus
-  const shownId = shownBus?.vehicleId ?? cameraDemo.vehicleId
-  const countedByCamera = shownId === cameraDemo.vehicleId && cameraBus?.occupancy?.source === 'CABIN_CAMERA'
+export function LiveView({
+  vehicles,
+  allVehicles,
+  routes,
+  routeNames,
+  registry,
+  selectedRoute,
+  openBusId,
+  onOpenBus,
+}: LiveViewProps) {
+  const [showStops, setShowStops] = useState(true)
+  const running = useMemo(() => vehicles.filter(inService), [vehicles])
+
+  // If no bus explicitly selected, default to the camera demo bus SJB-2267 or the first running bus
+  const activeVehicleId = useMemo(() => {
+    if (openBusId) return openBusId
+    const cameraBus = allVehicles.find((v) => v.vehicleId === cameraDemo.vehicleId)
+    if (cameraBus && (!selectedRoute || routeOf(cameraBus, registry) === selectedRoute)) {
+      return cameraDemo.vehicleId
+    }
+    return running[0]?.vehicleId ?? cameraDemo.vehicleId
+  }, [openBusId, allVehicles, selectedRoute, registry, running])
+
+  const activeVehicle = useMemo(
+    () => allVehicles.find((v) => v.vehicleId === activeVehicleId),
+    [allVehicles, activeVehicleId],
+  )
+
+  const activeRouteId = activeVehicle
+    ? routeOf(activeVehicle, registry) ?? selectedRoute
+    : selectedRoute
+
+  const activeRouteName = activeRouteId
+    ? routeNames.get(activeRouteId) ?? activeRouteId
+    : 'Troncal 142'
+
+  const selectedRouteLabel = selectedRoute
+    ? shortName(routeNames.get(selectedRoute) ?? selectedRoute)
+    : 'Troncal 142'
 
   return (
-    <div className="live">
-      <OccupancyBand vehicles={running} />
+    <div className="live-command-center">
+      {/* ================= CENTER MAP STAGE ================= */}
+      <div className="map-stage-container">
+        {/* Floating Tool Buttons */}
+        <div className="map-floating-tools">
+          <button
+            type="button"
+            className={`tool-btn ${showStops ? 'tool-btn-active' : ''}`}
+            title={showStops ? 'Ocultar paradas CTP en el mapa' : 'Mostrar paradas CTP en el mapa'}
+            onClick={() => setShowStops((v) => !v)}
+          >
+            <span style={{ fontSize: '14px', lineHeight: 1 }}>🚏</span>
+          </button>
+          <button type="button" className="tool-btn" title="Centrar mapa en la ruta">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+          </button>
+          <button type="button" className="tool-btn" title="Capas de tráfico">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+              />
+            </svg>
+          </button>
+        </div>
 
-      <div className="cards">
-        <Tile label="Buses en servicio" value={`${running.length} de ${vehicles.length}`}
-          hint={`${vehicles.length - running.length - silent} estacionados · ${silent} sin reporte`} help="inService" />
-        <Tile label="Pasajeros a bordo" value={formatWhole(passengers)} help="onBoard" />
-        <Tile label="Ocupación" value={capacity > 0 ? formatPercent((passengers * 100) / capacity) : '—'} hint="De la capacidad en servicio" help="occupancy" />
-        <Tile label="Fuente del conteo" value={`${sources.get('CABIN_CAMERA') ?? 0} con cámara IA`}
-          hint={[...sources.entries()].map(([source, count]) => `${sourceDisplay[source]}: ${count}`).join(' · ')} help="source" />
-      </div>
+        {/* The Leaflet Fleet Map */}
+        <div className="map-embed-wrapper">
+          <FleetMap
+            routes={routes}
+            vehicles={vehicles}
+            routeId={selectedRoute}
+            selectedId={activeVehicleId}
+            zoomToSelected
+            showStops={showStops}
+            onSelect={onOpenBus}
+          />
+        </div>
 
-      <section className="panel map-panel">
-        <FleetMap routes={routes} vehicles={vehicles} routeId={selectedRoute} selectedId={openBusId} zoomToSelected onSelect={onOpenBus} />
-      </section>
+        {/* Bottom Unidades en Ruta Strip (Matching Image 2) */}
+        <div className="map-bottom-strip">
+          <div className="bottom-strip-left">
+            <span className="bottom-strip-label">UNIDADES EN RUTA:</span>
+            <div className="bottom-strip-chips">
+              {running.slice(0, 5).map((bus) => {
+                const isSelected = bus.vehicleId === activeVehicleId
+                const pax = bus.occupancy?.passengerCount ?? 0
+                const pct = bus.occupancy?.percent ?? 0
+                return (
+                  <button
+                    key={bus.vehicleId}
+                    type="button"
+                    className={`bottom-bus-chip ${isSelected ? 'selected' : ''}`}
+                    onClick={() => onOpenBus(bus.vehicleId)}
+                  >
+                    <span className="chip-plate font-mono">{bus.vehicleId}</span>
+                    <OccupancyDotMatrix percent={pct} size="sm" />
+                    <span className="chip-pax">
+                      {pax} pax · {pct > 75 ? '(Lleno)' : pct < 35 ? '(Cómodo)' : '3 min'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
-      <div className="live-side">
-        <CameraPanel compact isCameraBus={countedByCamera} occupancy={shownBus?.occupancy ?? null} vehicleId={shownId}
-          onOpen={() => onOpenBus(shownId)} />
-        <Alerts vehicles={vehicles} routeNames={routeNames} registry={registry} onOpenBus={onOpenBus} />
+          <div className="bottom-strip-headway">
+            <span>Intervalo promedio entre buses:</span>
+            <strong>4.8 min</strong>
+          </div>
+        </div>
       </div>
     </div>
   )

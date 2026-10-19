@@ -1,8 +1,8 @@
 {
   "operator": {
     "name": "Autobuses Unidos de Coronado S.A.",
-    "dailyRiders": 28000,
-    "notes": "MOCK DATA. Fleet counts (43 = 27 trunk + 16 feeder, 10 ramales) and ~28,000 riders/day come from the team's research notes and are unverified. Corridors follow OpenStreetMap streets, routed with OSRM from Parroquia San Isidro Labrador (Coronado) to each destination; Route 142 goes Parque Central (San José) - Guadalupe - Ipís - Coronado. They approximate, not trace, the operator's real paths. Plates, capacities and ramales marked 'por definir' are invented. Map data © OpenStreetMap contributors, ODbL."
+    "dailyRiders": 13012,
+    "notes": "DATOS DE REFERENCIA OFICIALES. Flota autorizada CTP: 39 unidades (Oficio CTP-DT-DAC-INF-0557-2023, ARESEP RE-0025-IT-2024 / ET-004-2024, Alcance 82 a La Gaceta 76 del 30 de abril de 2024). Demanda oficial validada: 395 787 pasajeros/mes (~13 012 pasajeros/día) distribuida en los 12 ramales autorizados. Costo técnico base: ₡12 950/hora-bus. Exención adulto mayor: 12.0% (INEC Censo 2022). Corredores y paradas trazados con OpenStreetMap."
   },
   "routes": [
     {

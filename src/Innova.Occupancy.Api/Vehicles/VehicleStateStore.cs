@@ -227,6 +227,29 @@ public sealed class VehicleStateStore(IOptions<OccupancyApiOptions> options, Tim
         }
     }
 
+    /// <summary>
+    /// Clears history, door events and state for buses driven by the simulator, leaving real hardware buses untouched.
+    /// </summary>
+    public void ResetSimulated()
+    {
+        foreach (var record in _vehicles.Values)
+        {
+            lock (record)
+            {
+                if (record.Occupancy?.Source == SensorSource.Simulated || record.Occupancy is null)
+                {
+                    record.History.Clear();
+                    record.Events.Clear();
+                    record.BackfillEvents.Clear();
+                    record.Occupancy = null;
+                    record.Location = null;
+                    record.Trip = null;
+                    record.AsOf = null;
+                }
+            }
+        }
+    }
+
     private sealed class VehicleRecord(string vehicleId)
     {
         public string VehicleId { get; } = vehicleId;

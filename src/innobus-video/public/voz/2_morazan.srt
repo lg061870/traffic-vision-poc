@@ -1,0 +1,8 @@
+1
+00:00:00,100 --> 00:00:04,395
+En lugar de hacer fila a ciegas, Sofía abre INNOBUS.
+
+2
+00:00:04,345 --> 00:00:10,510
+Escribe Coronado Centro, y ve que su bus pasa en tres minutos, con asientos libres.
+

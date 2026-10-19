@@ -1,0 +1,4 @@
+1
+00:00:00,100 --> 00:00:05,651
+INNOBUS la acompaña todo el trayecto, y le avisa antes de llegar a su parada.
+

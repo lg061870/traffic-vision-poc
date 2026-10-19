@@ -1,0 +1,38 @@
+[
+  {
+    "id": "alt-1",
+    "title": "Presa Moderada en Cruce Moravia - Guadalupe",
+    "description": "Colisión leve en el cruce de Novacentro genera tránsito lento hacia San José. Retraso estimado de 8 a 12 minutos.",
+    "category": "TRAFFIC",
+    "severity": "WARNING",
+    "affectedRoutes": ["Ruta 142 Troncal", "Ramal San Antonio"],
+    "updatedAt": "Hace 15 min"
+  },
+  {
+    "id": "alt-2",
+    "title": "Trabajos de Recarpeteo Asfáltico en Ipís",
+    "description": "Paso regulado por obras del MOPT entre parada 12 y 14. Se recomienda tomar previsiones con el tiempo de llegada.",
+    "category": "DETOUR",
+    "severity": "INFO",
+    "affectedRoutes": ["Ramal Ipís"],
+    "updatedAt": "Hoy, 07:30 AM"
+  },
+  {
+    "id": "alt-3",
+    "title": "Flota 100% Operativa y Despacho Regular",
+    "description": "Las 43 unidades de Coronado operan con telemetría 5G activa y sensores de aforo calibrados.",
+    "category": "SYSTEM",
+    "severity": "SUCCESS",
+    "affectedRoutes": ["Todas las rutas GAM"],
+    "updatedAt": "Tiempo real"
+  },
+  {
+    "id": "alt-4",
+    "title": "Cierre Temporal Parada Parque Coronado por Evento Patronal",
+    "description": "La parada de la Iglesia se traslada temporalmente 100 metros norte frente al Banco Nacional.",
+    "category": "DETOUR",
+    "severity": "DANGER",
+    "affectedRoutes": ["Ruta 142 Troncal", "Dulce Nombre"],
+    "updatedAt": "Ayer"
+  }
+]

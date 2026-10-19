@@ -1,0 +1,8 @@
+1
+00:00:00,100 --> 00:00:03,190
+El bus llega justo cuando la app dijo.
+
+2
+00:00:03,140 --> 00:00:06,460
+Treinta y ocho de noventa: va sentada.
+

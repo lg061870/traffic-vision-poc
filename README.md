@@ -8,6 +8,7 @@ Solución del equipo **Proyecto INNOVA** para el Hackatón Centroamericano de In
 | Occupancy API | `src/Innova.Occupancy.Api` | Sirve únicamente el resultado procesado de los sensores y el video de cada bus: ocupación, eventos de puerta y posición. Ver [su README](src/Innova.Occupancy.Api/README.md). |
 | Occupancy Reference Web | `src/occupancy-reference-web` | App de referencia (React) que lee la Occupancy API: mapa de la flota, lista de buses, historial y eventos de puerta. Ver [su README](src/occupancy-reference-web/README.md). |
 | Occupancy Map (host) | `src/Innova.Occupancy.Map` | Sitio ASP.NET Core que sirve la app de referencia ya compilada, para publicarla desde Visual Studio. |
+| INNOVA Pasajeros (Móvil) | `src/innova-passenger-mobile` | Aplicación móvil para pasajeros: planificador multimodal, telemetría y aforo en vivo, calculadora de tarifas, catálogo de paradas, alertas y asistente inteligente. Ver [su README](src/innova-passenger-mobile/README.md). |
 | Pruebas de la Occupancy API | `tests/Innova.Occupancy.Api.Tests` | Pruebas unitarias y de endpoints (xUnit). |
 | OnboardComputerApp | `src/Innova.OnboardComputer.App` | Corre en cada bus: reúne GPS (NMEA 0183), eventos del contador de puerta y resultados de visión, y los envía a la Occupancy API. Incluye un modo de simulación. Ver [su README](src/Innova.OnboardComputer.App/README.md). |
 | Pruebas del OnboardComputerApp | `tests/Innova.OnboardComputer.App.Tests` | Pruebas unitarias y de extremo a extremo contra la Occupancy API (xUnit). |
