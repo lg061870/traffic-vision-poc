@@ -1,6 +1,6 @@
 // The ribbon's tool strip: a different set of groups for each Studio tab, plus the Simulación
 // group pinned at the right of every tab.
-import type { ReactNode } from 'react'
+import { Children, isValidElement, type ReactNode } from 'react'
 import type { OperationalCostConfig } from '../../config/operatorSettings'
 import { Icon } from './icons'
 import './studioRibbon.css'
@@ -56,9 +56,28 @@ interface Big {
   color?: string
 }
 
+// Plain text of a label (labels may hold <br />), used as the tooltip when the ribbon is compact.
+function labelText(node: ReactNode): string {
+  return Children.toArray(node)
+    .map((child) => {
+      if (typeof child === 'string' || typeof child === 'number') return String(child)
+      if (isValidElement<{ children?: ReactNode }>(child)) return child.type === 'br' ? '\n' : labelText(child.props.children)
+      return ''
+    })
+    .join('')
+    .replace(/-\n/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function tooltip(label: ReactNode, title?: string) {
+  const text = labelText(label)
+  return title ? `${text}: ${title}` : text
+}
+
 function BigButton({ icon, label, onClick, active, title, color }: Big) {
   return (
-    <button type="button" className={`fs-tool-btn ${active ? 'active' : ''}`} onClick={onClick} title={title}>
+    <button type="button" className={`fs-tool-btn ${active ? 'active' : ''}`} onClick={onClick} title={tooltip(label, title)}>
       <span className="fs-tool-icon">
         <Icon name={icon} color={color} />
       </span>
@@ -76,7 +95,7 @@ function SmallStack({ items }: { items: Big[] }) {
           type="button"
           className={`fs-small-btn ${item.active ? 'active' : ''}`}
           onClick={item.onClick}
-          title={item.title}
+          title={tooltip(item.label, item.title)}
         >
           <Icon name={item.icon} size={16} color={item.color} />
           <span>{item.label}</span>

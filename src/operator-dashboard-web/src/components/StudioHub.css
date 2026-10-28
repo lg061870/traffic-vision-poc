@@ -1341,3 +1341,80 @@ height: 100%;
 .fs-sheet-nav + .fs-sheet-nav {
   margin-right: 14px;
 }
+
+/* --------------------------------------------------------------------------
+   Compact ribbon: icons only (labels move to tooltips), about half the height,
+   so the views below get the room. Toggled from the tab row.
+   -------------------------------------------------------------------------- */
+.fs-ribbon-tabs .fs-ribbon-collapse-btn {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 12px;
+}
+
+.fs-ribbon-tabs .fs-ribbon-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.fs-ribbon.compact .fs-ribbon-tools {
+  height: 30px;
+  padding: 2px 10px;
+}
+
+.fs-ribbon.compact .fs-tool-group {
+  padding: 0 4px;
+}
+
+.fs-ribbon.compact .fs-tool-group-label,
+.fs-ribbon.compact .fs-tool-btn > span:not(.fs-tool-icon),
+.fs-ribbon.compact .fs-small-btn > span,
+.fs-ribbon.compact .fs-run-title {
+  display: none;
+}
+
+.fs-ribbon.compact .fs-tool-buttons {
+  gap: 1px;
+}
+
+.fs-ribbon.compact .fs-tool-btn,
+.fs-ribbon.compact .fs-small-btn,
+.fs-ribbon.compact .fs-run-box {
+  min-width: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  justify-content: center;
+}
+
+.fs-ribbon.compact .fs-tool-icon {
+  margin: 0;
+}
+
+.fs-ribbon.compact .fs-tool-icon svg,
+.fs-ribbon.compact .fs-run-triangle svg,
+.fs-ribbon.compact .fs-small-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.fs-ribbon.compact .fs-run-box {
+  width: 32px;
+}
+
+.fs-ribbon.compact .fs-small-stack {
+  flex-direction: row;
+  align-items: center;
+}
+
+.fs-ribbon.compact .fs-ribbon-field {
+  flex-direction: row;
+  align-items: center;
+  padding: 0 2px;
+}
+
+.fs-ribbon.compact .fs-spinner {
+  height: 22px;
+}

@@ -244,6 +244,8 @@ export function StudioHub(_props: StudioHubProps) {
   const [costConfig, setCostConfig] = useState<OperationalCostConfig>(defaultOperationalCostConfig)
   const [schedules, setSchedules] = useState<Record<DayScheduleType, DayScheduleConfig>>(defaultDaySchedules)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  // Compact ribbon (icons only) is the default so the views get the room.
+  const [ribbonCompact, setRibbonCompact] = useState(true)
   const [fleet, setFleet] = useState(39)
   const [demandScale, setDemandScale] = useState(1)
   const [rutasView, setRutasView] = useState<'diagrama' | 'tabla'>('diagrama')
@@ -572,7 +574,7 @@ export function StudioHub(_props: StudioHubProps) {
       {/* --------------------------------------------------------------------
           2. RIBBON MENU TABS & ACTION GROUPS
           -------------------------------------------------------------------- */}
-      <div className="fs-ribbon">
+      <div className={`fs-ribbon ${ribbonCompact ? 'compact' : ''}`}>
         <div className="fs-ribbon-tabs">
           {RIBBON_TABS.map((tab) => (
             <button
@@ -584,6 +586,15 @@ export function StudioHub(_props: StudioHubProps) {
               {tab.label}
             </button>
           ))}
+          <button
+            type="button"
+            className="fs-ribbon-collapse-btn"
+            title={ribbonCompact ? 'Mostrar etiquetas de la cinta' : 'Compactar la cinta (solo íconos)'}
+            aria-pressed={ribbonCompact}
+            onClick={() => setRibbonCompact((c) => !c)}
+          >
+            {ribbonCompact ? '▾' : '▴'}
+          </button>
         </div>
 
         <StudioRibbon
