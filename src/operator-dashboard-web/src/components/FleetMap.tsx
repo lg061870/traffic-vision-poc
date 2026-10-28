@@ -186,6 +186,17 @@ function Follow({ vehicle }: { vehicle: VehicleState | undefined }) {
 }
 
 // Plate labels on every bus pile up when zoomed out; below this zoom only the selected bus keeps one.
+/** Leaflet only notices window resizes; this redraws the tiles when the map's own box changes (maximize). */
+function FitContainer() {
+  const map = useMap()
+  useEffect(() => {
+    const observer = new ResizeObserver(() => map.invalidateSize())
+    observer.observe(map.getContainer())
+    return () => observer.disconnect()
+  }, [map])
+  return null
+}
+
 function LabelsByZoom() {
   const map = useMap()
   useEffect(() => {
@@ -273,6 +284,7 @@ export function FleetMap({
       {follow && <Follow vehicle={selected} />}
       {zoomToSelected && <ZoomToSelected vehicle={selected} />}
       <LabelsByZoom />
+      <FitContainer />
 
       {/* Official CTP Bus Stops along corridors */}
       {showStops &&

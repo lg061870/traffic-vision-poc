@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback, type ReactNode } from 'react'
 import type { FeatureCollection, LineString } from 'geojson'
 import type { VehicleState } from '../types/occupancy'
+import { MaximizeButton } from './MaximizeButton'
 
 interface BusBunchingDiagramProps {
   routes: FeatureCollection | null
@@ -1294,25 +1295,17 @@ export function BusBunchingDiagram({
           )}
 
           {!isFullScreen && (
-            <button
-              type="button"
-              className="bunching-action-btn"
-              aria-label={showsMaximized ? 'Restaurar tamaño' : 'Maximizar vista'}
-              title={showsMaximized ? 'Restaurar tamaño (Esc)' : 'Maximizar vista'}
-              onClick={() => {
+            <MaximizeButton
+              maximized={showsMaximized}
+              onChange={(next) => {
                 if (onMaximizedChange) {
-                  onMaximizedChange(!maximized)
-                } else if (isMaximized) {
-                  setIsMaximized(false)
-                  setIsExpanded(true)
+                  onMaximizedChange(next)
                 } else {
-                  setIsMaximized(true)
+                  setIsMaximized(next)
                   setIsExpanded(true)
                 }
               }}
-            >
-              {showsMaximized ? '❐' : '⛶'}
-            </button>
+            />
           )}
 
           {!fillsBox && (

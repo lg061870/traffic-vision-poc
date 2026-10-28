@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FleetMap } from '../../FleetMap'
 import { BusBunchingDiagram, loadControlsOpen } from '../../BusBunchingDiagram'
+import { MaximizeButton } from '../../MaximizeButton'
 import { ViewHeader } from '../ViewHeader'
 import { useRoutes } from '../../../hooks/useRoutes'
 import { fmtTime, mockRouteLines, routeLinesWithFallback, vehiclesAt, type RunOutput } from '../mockRun'
@@ -11,7 +12,7 @@ export function MapaReplayView({ output, mode }: { output: RunOutput; mode: 'map
   const [minute, setMinute] = useState(7 * 60)
   const [playing, setPlaying] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
-  // Maximized covers everything under the top bar except the sidebar (the user can still close it).
+  // Maximized fills the whole window: top bar, sidebar, ribbon, filters and run tabs all step aside.
   const [maximized, setMaximized] = useState(false)
   // The diagram's "Controles" toggle also hides this view's title and replay bar, to give the drawing room.
   const [controlsOpen, setControlsOpen] = useState(loadControlsOpen)
@@ -79,7 +80,10 @@ export function MapaReplayView({ output, mode }: { output: RunOutput; mode: 'map
 
       <div className="sv-card sv-replay-canvas">
         {mode === 'mapa' ? (
-          <FleetMap key={geojson ? 'osm' : 'stops'} routes={lines} vehicles={vehicles} selectedId={selected} onSelect={setSelected} />
+          <>
+            <FleetMap key={geojson ? 'osm' : 'stops'} routes={lines} vehicles={vehicles} selectedId={selected} onSelect={setSelected} />
+            <MaximizeButton maximized={maximized} onChange={changeMaximized} className="sv-map-maximize" />
+          </>
         ) : (
           <BusBunchingDiagram
             routes={lines}
