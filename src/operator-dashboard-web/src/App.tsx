@@ -10,6 +10,7 @@ import { LiveView } from './components/LiveView'
 import { Modal } from './components/Modal'
 import { MetricsRibbon } from './components/MetricsRibbon'
 import { ProfitView } from './components/ProfitView'
+import { ProjectNotice } from './components/ProjectNotice'
 import { RouteRail } from './components/RouteRail'
 import { TacticalStudio } from './components/TacticalStudio'
 import { startProductTour } from './services/tour'
@@ -103,6 +104,7 @@ export function App() {
     return (
       <AssumptionsContext.Provider value={assumptions}>
         <TacticalStudio />
+        <ProjectNotice />
       </AssumptionsContext.Provider>
     )
   }
@@ -313,6 +315,8 @@ export function App() {
         isOpen={showAppVideo}
         onClose={() => setShowAppVideo(false)}
       />
+
+      <ProjectNotice />
     </div>
     </AssumptionsContext.Provider>
   )
