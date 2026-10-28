@@ -3039,23 +3039,6 @@ button {
   overflow: hidden;
 }
 
-.bunching-controls-toggle {
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 7px;
-}
-
-.bunching-chevron {
-  display: inline-block;
-  transition: transform 0.15s ease;
-  transform: rotate(-90deg);
-}
-
-.bunching-chevron.is-open {
-  transform: rotate(0deg);
-}
-
 /* Mode, layers and the secondary figures share one row that wraps on narrow screens. */
 .bunching-controls-row {
   display: flex;
@@ -3193,7 +3176,6 @@ button {
 /* Narrow panel (phone, or a small content area beside the studio sidebar): drop the extras, let the header wrap. */
 @container bunching-panel (max-width: 640px) {
   .bunching-head-stat--long,
-  .bunching-controls-label,
   .bunching-row-hint,
   .bunching-badge-detail,
   .bunching-badge-extra {

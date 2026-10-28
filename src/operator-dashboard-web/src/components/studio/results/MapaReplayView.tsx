@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FleetMap } from '../../FleetMap'
-import { BusBunchingDiagram, loadControlsOpen } from '../../BusBunchingDiagram'
+import { BusBunchingDiagram } from '../../BusBunchingDiagram'
 import { MaximizeButton } from '../../MaximizeButton'
 import { ViewHeader } from '../ViewHeader'
 import { useRoutes } from '../../../hooks/useRoutes'
@@ -14,23 +14,13 @@ export function MapaReplayView({ output, mode }: { output: RunOutput; mode: 'map
   const [selected, setSelected] = useState<string | null>(null)
   // Maximized fills the whole window: top bar, sidebar, ribbon, filters and run tabs all step aside.
   const [maximized, setMaximized] = useState(false)
-  // The diagram's "Controles" toggle also hides this view's title and replay bar, to give the drawing room.
-  const [controlsOpen, setControlsOpen] = useState(loadControlsOpen)
-  const showsChrome = mode === 'mapa' || controlsOpen
-
-  // Maximizing has room for the controls, so it opens them; restoring brings back the saved choice.
-  const changeMaximized = (next: boolean) => {
-    setMaximized(next)
-    setControlsOpen(next ? true : loadControlsOpen())
-  }
+  // A maximized diagram also hides this view's title and replay bar; a compact replay control moves into its header.
+  const showsChrome = mode === 'mapa' || !maximized
 
   useEffect(() => {
     if (!maximized) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setMaximized(false)
-        setControlsOpen(loadControlsOpen())
-      }
+      if (e.key === 'Escape') setMaximized(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -82,7 +72,7 @@ export function MapaReplayView({ output, mode }: { output: RunOutput; mode: 'map
         {mode === 'mapa' ? (
           <>
             <FleetMap key={geojson ? 'osm' : 'stops'} routes={lines} vehicles={vehicles} selectedId={selected} onSelect={setSelected} />
-            <MaximizeButton maximized={maximized} onChange={changeMaximized} className="sv-map-maximize" />
+            <MaximizeButton maximized={maximized} onChange={setMaximized} className="sv-map-maximize" />
           </>
         ) : (
           <BusBunchingDiagram
@@ -91,11 +81,9 @@ export function MapaReplayView({ output, mode }: { output: RunOutput; mode: 'map
             activeVehicleId={selected}
             onSelectVehicle={setSelected}
             maximized={maximized}
-            onMaximizedChange={changeMaximized}
-            controlsOpen={controlsOpen}
-            onControlsOpenChange={setControlsOpen}
+            onMaximizedChange={setMaximized}
             headerExtra={
-              !controlsOpen && (
+              !showsChrome && (
                 <span className="sv-replay-mini">
                   <button
                     type="button"

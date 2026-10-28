@@ -14,9 +14,6 @@ interface BusBunchingDiagramProps {
   /** When set, the host owns maximizing: the diagram fills its box and the maximize button calls this. */
   onMaximizedChange?: (maximized: boolean) => void
   maximized?: boolean
-  /** When set, the host owns the "Controles" toggle (it also hides its own title and replay bar). */
-  controlsOpen?: boolean
-  onControlsOpenChange?: (open: boolean) => void
   /** Shown in the header after the title, e.g. a compact replay control while the host's bar is hidden. */
   headerExtra?: ReactNode
 }
@@ -116,25 +113,6 @@ const PRESET_OPTIONS: { id: DiagramPreset; label: string; title: string }[] = [
   { id: 'minimo', label: 'Mínimo', title: 'Vista mínima: solo rieles y buses en movimiento' },
   { id: 'todo', label: 'Todo', title: 'Mostrar todas las capas' },
 ]
-
-// Remembers per browser whether the user hid the mode/layers/stats area.
-const CONTROLS_STORAGE_KEY = 'buslab.bunching.controlsCollapsed'
-
-export function loadControlsOpen(): boolean {
-  try {
-    return window.localStorage.getItem(CONTROLS_STORAGE_KEY) !== '1'
-  } catch {
-    return true
-  }
-}
-
-function saveControlsOpen(open: boolean) {
-  try {
-    window.localStorage.setItem(CONTROLS_STORAGE_KEY, open ? '0' : '1')
-  } catch {
-    // Storage blocked (private mode): the toggle still works for this visit.
-  }
-}
 
 interface DiagramLayers {
   headways: boolean
@@ -348,8 +326,6 @@ export function BusBunchingDiagram({
   isFullScreen = false,
   onMaximizedChange,
   maximized = false,
-  controlsOpen: controlsOpenProp,
-  onControlsOpenChange,
   headerExtra,
 }: BusBunchingDiagramProps) {
   const [isExpanded, setIsExpanded] = useState(true)
@@ -364,13 +340,6 @@ export function BusBunchingDiagram({
   const [clickedStopId, setClickedStopId] = useState<number | string | null>(null)
   const [layers, setLayers] = useState<DiagramLayers>(PRESET_CONFIGS.todo)
   const [activePreset, setActivePreset] = useState<DiagramPreset | 'custom'>('todo')
-  const [ownControlsOpen, setOwnControlsOpen] = useState(loadControlsOpen)
-  const controlsOpen = controlsOpenProp ?? ownControlsOpen
-  const setControlsOpen = (open: boolean) => {
-    saveControlsOpen(open)
-    if (onControlsOpenChange) onControlsOpenChange(open)
-    else setOwnControlsOpen(open)
-  }
   const [layersMenuOpen, setLayersMenuOpen] = useState(false)
   const layersMenuRef = useRef<HTMLDivElement>(null)
 
@@ -1277,23 +1246,6 @@ export function BusBunchingDiagram({
             <span className="bunching-badge badge-good">{isExpanded ? 'Intervalos regulares (> 3 min)' : 'Estable'}</span>
           )}
 
-          {isExpanded && (
-            <button
-              type="button"
-              className="bunching-action-btn bunching-controls-toggle"
-              aria-expanded={controlsOpen}
-              aria-controls="bunching-controls"
-              aria-label={controlsOpen ? 'Ocultar controles y cifras' : 'Mostrar controles y cifras'}
-              title={controlsOpen ? 'Ocultar controles y cifras' : 'Mostrar controles y cifras'}
-              onClick={() => setControlsOpen(!controlsOpen)}
-            >
-              <span className="bunching-controls-label">Controles</span>
-              <span className={`bunching-chevron ${controlsOpen ? 'is-open' : ''}`} aria-hidden="true">
-                ▾
-              </span>
-            </button>
-          )}
-
           {!isFullScreen && (
             <MaximizeButton
               maximized={showsMaximized}
@@ -1329,75 +1281,67 @@ export function BusBunchingDiagram({
 
       {isExpanded && (
         <div className="bunching-body">
-          {/* Collapsible controls: mode, layers and the secondary figures in one row */}
-          {controlsOpen && (
-            <div id="bunching-controls" className="bunching-controls-row">
-              <div className="bunching-segmented" role="group" aria-label="Modo de vista">
-                {PRESET_OPTIONS.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    className={`bunching-segment ${activePreset === p.id ? 'active' : ''}`}
-                    aria-pressed={activePreset === p.id}
-                    title={p.title}
-                    onClick={() => applyPreset(p.id)}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="bunching-layers-menu" ref={layersMenuRef}>
+          {/* Controls: mode, layers and the secondary figures in one row */}
+          <div id="bunching-controls" className="bunching-controls-row">
+            <div className="bunching-segmented" role="group" aria-label="Modo de vista">
+              {PRESET_OPTIONS.map((p) => (
                 <button
+                  key={p.id}
                   type="button"
-                  className={`bunching-layers-btn ${layersMenuOpen ? 'is-open' : ''}`}
-                  aria-haspopup="true"
-                  aria-expanded={layersMenuOpen}
-                  aria-controls="bunching-layers-popover"
-                  onClick={() => setLayersMenuOpen((v) => !v)}
+                  className={`bunching-segment ${activePreset === p.id ? 'active' : ''}`}
+                  aria-pressed={activePreset === p.id}
+                  title={p.title}
+                  onClick={() => applyPreset(p.id)}
                 >
-                  Capas{' '}
-                  <span className="bunching-layers-count">
-                    {LAYER_OPTIONS.filter((o) => layers[o.key]).length}/{LAYER_OPTIONS.length}
-                  </span>{' '}
-                  <span aria-hidden="true">▾</span>
+                  {p.label}
                 </button>
-                {layersMenuOpen && (
-                  <div id="bunching-layers-popover" className="bunching-layers-popover" role="group" aria-label="Capas del diagrama">
-                    {LAYER_OPTIONS.map((o) => (
-                      <label key={o.key} className="bunching-layer-option" title={o.title}>
-                        <input type="checkbox" checked={layers[o.key]} onChange={() => toggleLayer(o.key)} />
-                        {o.label}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="bunching-row-stats">
-                <span>
-                  Flota <strong>{mappedBuses.length}</strong> · {enRouteBuses.length} en corredor · {depotBuses.length} en plantel
-                </span>
-                {layers.interStopTimes && (
-                  <span>
-                    Corredor <strong>41,3 min</strong> (11,33 km)
-                  </span>
-                )}
-                <span className="bunching-row-hint">
-                  {layers.stopLabels ? 'Haga clic en una parada o un bus para ver el detalle.' : 'Use Capas para elegir qué se muestra.'}
-                </span>
-              </div>
+              ))}
             </div>
-          )}
+
+            <div className="bunching-layers-menu" ref={layersMenuRef}>
+              <button
+                type="button"
+                className={`bunching-layers-btn ${layersMenuOpen ? 'is-open' : ''}`}
+                aria-haspopup="true"
+                aria-expanded={layersMenuOpen}
+                aria-controls="bunching-layers-popover"
+                onClick={() => setLayersMenuOpen((v) => !v)}
+              >
+                Capas{' '}
+                <span className="bunching-layers-count">
+                  {LAYER_OPTIONS.filter((o) => layers[o.key]).length}/{LAYER_OPTIONS.length}
+                </span>{' '}
+                <span aria-hidden="true">▾</span>
+              </button>
+              {layersMenuOpen && (
+                <div id="bunching-layers-popover" className="bunching-layers-popover" role="group" aria-label="Capas del diagrama">
+                  {LAYER_OPTIONS.map((o) => (
+                    <label key={o.key} className="bunching-layer-option" title={o.title}>
+                      <input type="checkbox" checked={layers[o.key]} onChange={() => toggleLayer(o.key)} />
+                      {o.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bunching-row-stats">
+              <span>
+                Flota <strong>{mappedBuses.length}</strong> · {enRouteBuses.length} en corredor · {depotBuses.length} en plantel
+              </span>
+              {layers.interStopTimes && (
+                <span>
+                  Corredor <strong>41,3 min</strong> (11,33 km)
+                </span>
+              )}
+              <span className="bunching-row-hint">
+                {layers.stopLabels ? 'Haga clic en una parada o un bus para ver el detalle.' : 'Use Capas para elegir qué se muestra.'}
+              </span>
+            </div>
+          </div>
 
           {/* SVG Diagram Canvas: Symmetrically Centered Horizontally and Vertically with Pan & Zoom */}
-          {/* Like the map: working on the drawing tucks the controls away to give it room. */}
-          <div
-            className="network-svg-wrap"
-            onPointerDownCapture={() => {
-              if (controlsOpen) setControlsOpen(false)
-            }}
-          >
+          <div className="network-svg-wrap">
             <svg
               ref={svgRef}
               viewBox={layout.viewBox}
