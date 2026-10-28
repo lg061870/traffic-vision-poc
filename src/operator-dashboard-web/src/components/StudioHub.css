@@ -1,0 +1,1343 @@
+/* ==========================================================================
+   FLEETSIM WORKSTATION STYLESHEET - 1:1 REPLICATION
+   ========================================================================== */
+
+:root {
+  --fs-teal-dark: #0c3238;
+  --fs-teal-header: #0e3b43;
+  --fs-teal-pill: #17434b;
+  --fs-bg-canvas: #edf0f3;
+  --fs-bg-ribbon: #eceef1;
+  --fs-bg-filter: #e2e6ea;
+  --fs-border-grid: #d2d7de;
+  --fs-loss-red: #c93b3b;
+  --fs-loss-light: #f87171;
+  --fs-profit-green: #2e7d32;
+  --fs-profit-light: #66bb6a;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.fs-root,
+.fs-root *,
+.fs-root button,
+.fs-root input,
+.fs-root select,
+.fs-root textarea,
+.fs-root table,
+.fs-root th,
+.fs-root td,
+.fs-root span,
+.fs-root div,
+.fs-root p,
+.fs-root a,
+.fs-root header,
+.fs-root footer,
+.fs-root aside,
+.fs-root main {
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI Web (West European)", Calibri, Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.fs-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  background-color: var(--fs-bg-canvas);
+  color: #1f2937;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* --------------------------------------------------------------------------
+   1. TOP WINDOW BAR
+   -------------------------------------------------------------------------- */
+.fs-topbar {
+display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  background-color: var(--fs-teal-dark);
+  color: #ffffff;
+  font-size: 11px;
+  flex-shrink: 0;
+  height: 40px;
+}
+
+.fs-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fs-brand-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fs-brand-icon {
+  width: 22px;
+  height: 22px;
+  background: #0284c7;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fs-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.fs-brand-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fs-brand-logo {
+  flex-shrink: 0;
+  display: block;
+}
+
+.fs-brand-name .fs-brand-accent {
+  color: #38bdf8;
+}
+
+.fs-brand-badge {
+  font-size: 8px;
+  color: #38bdf8;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.fs-brand-sub {
+  font-size: 9px;
+  color: #94a3b8;
+}
+
+.fs-doc-center {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.fs-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Red-outlined Cloud Sync box */
+.fs-cloud-pill {
+display: flex;
+  align-items: stretch;
+  padding: 0;
+  background-color: #ffffff;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  overflow: hidden;
+  height: 26px;
+}
+
+.fs-cloud-pill:hover {
+  background-color: #f8fafc;
+}
+
+.fs-cloud-icons {
+display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 6px 0 8px;
+  border-right: 1px solid #cbd5e1;
+}
+
+.fs-top-btn {
+display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--fs-teal-pill);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  padding: 0 10px;
+  height: 24px;
+  border-radius: 3px;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+
+/* --------------------------------------------------------------------------
+   2. RIBBON MENU & GROUPS (OFFICE 365 / WORD ONLINE EXACT REPLICATION)
+   -------------------------------------------------------------------------- */
+.fs-ribbon {
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  border-bottom: 1px solid #d2d0ce;
+  flex-shrink: 0;
+}
+
+.fs-ribbon-tabs {
+  display: flex;
+  align-items: center;
+  padding: 2px 10px 0 10px;
+  gap: 2px;
+  background-color: var(--fs-teal-header);
+  border-bottom: none;
+  height: 29px;
+}
+
+.fs-ribbon-tab {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  padding: 5px 12px 6px 12px;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 3px 3px 0 0;
+  transition: background-color 0.1s, color 0.1s;
+}
+
+.fs-ribbon-tab:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.fs-ribbon-tab.active {
+  background: #ffffff;
+  color: var(--fs-teal-dark);
+  font-weight: 600;
+  box-shadow: none;
+  border-bottom: none;
+}
+
+.fs-ribbon-tools {
+display: flex;
+  align-items: stretch;
+  padding: 4px 10px 3px 10px;
+  gap: 0;
+  background: #f7f8fa;
+  height: 71px;
+  border-bottom: 1px solid #d2d0ce;
+  overflow-y: hidden;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.fs-ribbon-tools::-webkit-scrollbar {
+  display: none;
+}
+
+.fs-tool-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 8px 3px 8px;
+  border-right: 1px solid #e1dfdd;
+  height: 100%;
+}
+
+.fs-tool-buttons {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+}
+
+.fs-tool-group-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 3px;
+  font-size: 9.5px;
+  color: #605e5c;
+  font-weight: 400;
+  line-height: 1;
+  margin-top: auto;
+  padding-top: 2px;
+  user-select: none;
+}
+
+.fs-dialog-launcher {
+  font-size: 9px;
+  color: #8a8886;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.fs-dialog-launcher:hover {
+  color: #201f1e;
+}
+
+.fs-tool-btn {
+display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 2px 6px 1px 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-size: 10px;
+  line-height: 1.05;
+  color: #1f2937;
+  cursor: pointer;
+  min-width: 60px;
+  max-width: 92px;
+  height: 43px;
+  text-align: center;
+  transition: background-color 0.1s, border-color 0.1s;
+}
+
+.fs-tool-btn:hover {
+  background: #f3f2f1;
+  border-color: #c8c6c4;
+}
+
+.fs-tool-btn.active {
+background: #e6e9ee;
+  border-color: #c3c9d1;
+}
+
+.fs-tool-icon {
+height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1px;
+  color: #3a4654;
+}
+
+.fs-tool-icon svg,
+.fs-run-triangle svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Big Run Simulation Box - Hero Ribbon Call to Action */
+.fs-run-box {
+display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #eef0f3 0%, #dde1e6 100%);
+  border: 1px solid #9aa3ad;
+  border-radius: 3px;
+  padding: 2px 10px;
+  height: 43px;
+  min-width: 92px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: inset 0 1px 0 #ffffff;
+}
+
+.fs-run-box:hover {
+background: linear-gradient(180deg, #e3e7ec 0%, #cfd5dc 100%);
+  border-color: #6b7785;
+}
+
+.fs-run-triangle {
+display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1px;
+  color: #17375e;
+}
+
+.fs-run-title {
+font-size: 10px;
+  font-weight: 700;
+  color: #1f2937;
+  letter-spacing: 0.2px;
+  text-align: center;
+  line-height: 1.05;
+}
+
+.fs-ribbon-collapse-box {
+  margin-left: auto;
+  display: flex;
+  align-items: flex-start;
+  padding: 4px 0 0 8px;
+}
+
+.fs-ribbon-collapse-btn {
+  font-size: 11px;
+  color: #605e5c;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 2px;
+  transition: all 0.1s;
+}
+
+.fs-ribbon-collapse-btn:hover {
+  background-color: #f3f2f1;
+  color: #201f1e;
+}
+
+/* --------------------------------------------------------------------------
+   3. FILTERS & ROUTE STRIP ("FILTROS Y RAMALES:")
+   -------------------------------------------------------------------------- */
+.fs-filter-strip {
+display: flex;
+  align-items: center;
+  padding: 4px 12px;
+  background-color: #f1f3f5;
+  border-bottom: 1px solid var(--fs-border-grid);
+  font-size: 11px;
+  gap: 14px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex-shrink: 0;
+  height: 50px;
+}
+
+.fs-filter-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.fs-filter-title {
+display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1f2937;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fs-filter-control {
+display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fs-filter-label {
+font-size: 10.5px;
+  color: #334155;
+  font-weight: 400;
+}
+
+.fs-filter-select {
+padding: 2px 6px;
+  min-width: 110px;
+  font-size: 10.5px;
+  border: 1px solid #b8c0ca;
+  border-radius: 2px;
+  background-color: #ffffff;
+  color: #1e293b;
+  cursor: pointer;
+}
+
+.fs-route-chips {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: nowrap;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.fs-route-chip {
+display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 3px;
+  background: #1f2a37;
+  color: #ffffff;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fs-route-chip-code {
+font-weight: 800;
+  color: #111827;
+  background: #ffffff;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 9.5px;
+}
+
+.fs-route-chip-close {
+  cursor: pointer;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.fs-route-chip-close:hover {
+  color: #ef4444;
+}
+
+.fs-btn-add-chip {
+background: #ffffff;
+  border: 1px solid #b8c0ca;
+  padding: 2px 10px;
+  border-radius: 3px;
+  font-size: 10.5px;
+  cursor: pointer;
+  color: #1f2937;
+  white-space: nowrap;
+}
+
+.fs-clear-filters {
+font-size: 10px;
+  color: #475569;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   4. TWO-COLUMN WORKSPACE
+   -------------------------------------------------------------------------- */
+/* Under the full-width header: sidebar on the left, shell on the right. */
+.fs-frame {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Everything right of the sidebar: ribbon, content, sheet tabs and status bar. */
+.fs-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  /* Anchor for views maximized under the top bar, beside the sidebar when open (.sv-stage-maximized). */
+  position: relative;
+}
+
+/* Row under the ribbon that holds the main column. */
+.fs-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Filters, content and sheet tabs: the sheet tabs line up with the content, not the sidebar. */
+.fs-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.fs-workspace {
+display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background-color: var(--fs-bg-canvas);
+}
+
+/* LEFT SIDEBAR: "SCENARIOS & MODELOS" */
+.fs-sidebar {
+display: flex;
+  flex-direction: column;
+  width: 230px;
+  flex-shrink: 0;
+  transition: margin-left 0.18s ease;
+  background-color: #f4f6f8;
+  border-right: 1px solid var(--fs-border-grid);
+  overflow-y: auto;
+  font-size: 11px;
+}
+
+/* Hidden by the hamburger: slides out to the left. */
+.fs-sidebar.collapsed {
+  margin-left: -230px;
+  visibility: hidden;
+  transition: margin-left 0.18s ease, visibility 0s linear 0.18s;
+}
+
+.fs-sidebar-header {
+display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border-bottom: 1px solid #dde2e8;
+  background-color: #f4f6f8;
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 11.5px;
+}
+
+.fs-sidebar-search {
+padding: 6px 8px;
+  display: flex;
+  position: relative;
+}
+
+.fs-search-input {
+  flex: 1 1 0;
+  padding: 3px 22px 3px 6px;
+  border: 1px solid #b8c0ca;
+  border-radius: 2px;
+  font-size: 10.5px;
+  background: #ffffff;
+}
+
+.fs-sidebar-actions {
+display: flex;
+  gap: 6px;
+  padding: 0 8px 6px;
+  border-bottom: 1px solid #dde2e8;
+}
+
+.fs-side-action-btn {
+  flex: 1 1 0;
+  padding: 3px 6px;
+  background: #ffffff;
+  border: 1px solid #b8c0ca;
+  border-radius: 2px;
+  font-size: 10.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #1f2937;
+}
+
+.fs-tree {
+padding: 6px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+}
+
+.fs-tree-group-title {
+display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 4px;
+  font-weight: 400;
+  color: #1f2937;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.fs-tree-item {
+display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 26px;
+  border-radius: 2px;
+  cursor: pointer;
+  color: #1f2937;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.fs-tree-item.active {
+background-color: #dfe4ea;
+  font-weight: 600;
+}
+
+/* Red outlined box around Google Drive section from mock */
+
+
+
+.fs-scenario-meta-box {
+  margin: auto 6px 6px;
+  padding: 6px 8px;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  font-size: 10px;
+  color: #475569;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   5. CENTER STAGE: 4-CARD ANALYTICS DASHBOARD
+   -------------------------------------------------------------------------- */
+.fs-stage {
+padding: 8px 10px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: minmax(190px, 0.8fr) minmax(220px, 1fr);
+  gap: 8px;
+  min-height: 0;
+  background-color: #eaeff2;
+}
+
+.fs-cards-grid-top {
+display: grid;
+  grid-template-columns: minmax(240px, 0.36fr) 1fr;
+  gap: 8px;
+  min-height: 0;
+}
+
+.fs-cards-grid-bottom {
+display: grid;
+  grid-template-columns: 1fr minmax(260px, 0.42fr);
+  gap: 8px;
+  min-height: 0;
+}
+
+.fs-card {
+background: #ffffff;
+  border: 1px solid var(--fs-border-grid);
+  border-radius: 4px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.fs-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.fs-card-title-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.fs-card-title {
+font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.fs-card-sub {
+display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* Card 1: Speedometer Gauge */
+.fs-gauge-container {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.fs-gauge-value {
+font-size: 30px;
+  font-weight: 800;
+  color: #8b1414;
+  line-height: 1;
+  margin-top: -10px;
+}
+
+.fs-gauge-subtext {
+font-size: 11px;
+  color: #1f2937;
+  margin-top: 3px;
+}
+
+.fs-gauge-link {
+font-size: 11px;
+  color: #1d5fa8;
+  cursor: pointer;
+}
+
+/* Card 2: Hourly Bar Chart */
+
+.fs-bar-col {
+  min-width: 0;
+  flex: 1 1 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+}
+
+.fs-bar-rect {
+width: 78%;
+  max-width: 34px;
+  border-radius: 1px 1px 0 0;
+}
+
+.fs-bar-rect.profit {
+  background-color: var(--fs-profit-green);
+}
+
+.fs-bar-rect.loss {
+  background-color: var(--fs-loss-red);
+}
+
+.fs-bar-hour-label {
+position: absolute;
+  bottom: -16px;
+  font-size: 9px;
+  color: #475569;
+}
+
+/* Card 3: Continuous Heatmap Table (BRICK STYLE LIKE MOCKUP) */
+
+
+
+.fs-heat-route-name {
+color: #1e293b;
+  white-space: nowrap;
+  font-size: 10px;
+  padding-right: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  align-self: center;
+}
+
+.fs-heat-cell {
+display: block;
+  border-radius: 1px;
+  min-height: 10px;
+}
+
+.fs-heat-cell.deep-red,
+.fs-heat-legend i.deep-red {
+  background-color: #c93b3b;
+}
+
+.fs-heat-cell.light-red,
+.fs-heat-legend i.light-red {
+  background-color: #e98b8b;
+}
+
+.fs-heat-cell.light-green,
+.fs-heat-legend i.light-green {
+  background-color: #9fd59a;
+}
+
+.fs-heat-cell.deep-green,
+.fs-heat-legend i.deep-green {
+  background-color: #3f9142;
+}
+
+/* Card 4: Horizontal Occupancy Progress Bars */
+.fs-occupancy-list {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.fs-occupancy-row {
+display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fs-occupancy-name {
+width: 112px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-occupancy-bar-bg {
+  flex: 1 1 0;
+  height: 9px;
+  background-color: #c9d3de;
+  border-radius: 1px;
+  overflow: hidden;
+  display: flex;
+  justify-content: flex-end;
+}
+
+
+
+
+/* --------------------------------------------------------------------------
+   6. BOTTOM WORKBOOK SHEET TABS (EXCEL STYLE)
+   -------------------------------------------------------------------------- */
+.fs-sheet-tabs {
+  display: flex;
+  align-items: stretch;
+  background-color: #f3f3f3;
+  border-top: 1px solid #d4d4d4;
+  padding: 0 8px 0 4px;
+  flex-shrink: 0;
+  height: 28px;
+  overflow: hidden;
+}
+
+/* Excel-style: flat tabs split by thin lines; the active one is white with green bold text
+   and a green bar along its bottom edge. */
+.fs-sheet-tab {
+  position: relative;
+  background: transparent;
+  border: none;
+  border-right: 1px solid #d4d4d4;
+  padding: 0 18px;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: #262626;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fs-sheet-tab:first-of-type {
+  border-left: 1px solid #d4d4d4;
+}
+
+.fs-sheet-tab:hover {
+  background: #e6e6e6;
+}
+
+.fs-sheet-tab.active {
+  background: #ffffff;
+  color: #107c41;
+  font-weight: 700;
+  margin-top: -1px;
+  border-top: 1px solid #ffffff;
+}
+
+.fs-sheet-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 3px;
+  height: 2px;
+  background: #107c41;
+}
+
+.fs-btn-add-sheet {
+  align-self: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 8px;
+  border: 1px solid #a6a6a6;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 13px;
+  line-height: 1;
+  color: #595959;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fs-btn-add-sheet:hover {
+  background: #e6e6e6;
+}
+
+/* --------------------------------------------------------------------------
+   7. BOTTOM STATUS BAR
+   -------------------------------------------------------------------------- */
+.fs-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 14px;
+  background-color: var(--fs-teal-dark);
+  color: #cbd5e1;
+  font-size: 10px;
+  flex-shrink: 0;
+  height: 22px;
+}
+
+.fs-status-telemetry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #f1f5f9;
+  font-weight: 500;
+}
+
+.fs-status-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fs-zoom-slider {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+}
+
+.fs-cloud-caret {
+font-size: 9px;
+  color: #475569;
+}
+
+.fs-cloud-label {
+display: flex;
+  align-items: center;
+  padding: 0 10px;
+  background: #e8edf2;
+}
+
+/* Cloud drives button, full width under Nuevo / Importar in the sidebar. */
+.fs-sidebar-cloud {
+  padding: 6px 8px;
+  border-bottom: 1px solid #dde2e8;
+}
+
+.fs-sidebar-cloud .fs-cloud-pill {
+  width: 100%;
+}
+
+.fs-sidebar-cloud .fs-cloud-label {
+  flex: 1;
+  justify-content: center;
+}
+
+/* Signed-in account: avatar, name and role. */
+.fs-account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.fs-avatar {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fs-account-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.fs-account-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-account-role {
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+
+.fs-account-top {
+  height: 34px;
+  padding: 0 10px 0 4px;
+  margin-left: 4px;
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0 4px 4px 0;
+  color: #ffffff;
+}
+
+.fs-account-top:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.fs-account-top .fs-account-role {
+  color: #94a3b8;
+}
+
+.fs-account-side {
+  width: 100%;
+  padding: 10px 12px;
+  background: #e8f1f8;
+  border-bottom: 1px solid #dde2e8;
+  color: #1e293b;
+}
+
+.fs-account-side:hover {
+  background: #dcebf6;
+}
+
+.fs-account-side .fs-avatar {
+  width: 34px;
+  height: 34px;
+  font-size: 12.5px;
+}
+
+.fs-account-side .fs-account-role {
+  color: #64748b;
+}
+
+.fs-hamburger {
+background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin-left: -6px;
+  cursor: pointer;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.fs-hamburger:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.fs-filter-actions {
+display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.fs-sidebar-filter {
+color: #64748b;
+  cursor: pointer;
+  display: flex;
+}
+
+.fs-search-icon {
+position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.fs-tree-caret {
+display: inline-block;
+  width: 8px;
+  color: #64748b;
+  font-size: 11px;
+  transition: transform 0.1s;
+}
+
+.fs-tree-caret.open {
+transform: rotate(90deg);
+}
+
+.fs-tree-item:hover {
+background-color: #e8ecf0;
+}
+
+.fs-tree-trailing {
+margin-left: auto;
+  display: flex;
+}
+
+.fs-help-dot {
+width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid #b8c0ca;
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+  flex-shrink: 0;
+}
+
+.fs-legend-dot {
+width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.fs-gauge-svg {
+width: 100%;
+  max-width: 280px;
+  flex: 1;
+  min-height: 0;
+}
+
+.fs-barchart {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  gap: 6px;
+  padding: 8px 0 18px;
+}
+
+.fs-bar-yaxis {
+display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 9px;
+  color: #64748b;
+  margin: -6px 0 -6px;
+  text-align: right;
+  width: 16px;
+}
+
+.fs-bar-plot {
+  flex: 1 1 0;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  border-bottom: 1px solid #cbd5e1;
+}
+
+.fs-bar-gridline {
+position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid #eef1f4;
+}
+
+.fs-bar-equilibrium {
+position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1.5px dashed #334155;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.fs-bar-equilibrium span {
+font-size: 9px;
+  color: #1f2937;
+  font-weight: 700;
+  transform: translateY(-120%);
+  background: #ffffff;
+  padding: 0 4px;
+}
+
+.fs-heatmap {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-auto-rows: minmax(10px, 1fr);
+  grid-template-rows: 14px;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.fs-heat-hour {
+font-size: 9.5px;
+  color: #334155;
+  font-weight: 600;
+  text-align: left;
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.fs-heat-cell.no-service,
+.fs-heat-legend i.no-service {
+background-color: #e5e8ec;
+}
+
+.fs-heat-legend {
+display: flex;
+  gap: 8px;
+  font-size: 9.5px;
+  color: #475569;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.fs-heat-legend i {
+display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 1px;
+  vertical-align: -1px;
+}
+
+.fs-occupancy-bar-fill {
+height: 100%;
+  background-color: #3f9142;
+}
+
+.fs-sheet-nav {
+  align-self: center;
+  color: #a6a6a6;
+  font-size: 11px;
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.fs-sheet-nav:hover {
+  color: #404040;
+}
+
+.fs-sheet-nav + .fs-sheet-nav {
+  margin-right: 14px;
+}

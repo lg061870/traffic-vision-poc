@@ -1,0 +1,945 @@
+import React, { useEffect, useState } from 'react'
+import './StudioHub.css'
+import { UserMembershipView } from './UserMembershipView'
+import {
+  defaultDaySchedules,
+  defaultOperationalCostConfig,
+  simulationPresets,
+  type DayScheduleConfig,
+  type DayScheduleType,
+  type OperationalCostConfig,
+} from '../config/operatorSettings'
+import { AyudaView } from './studio/AyudaView'
+import { CostosView } from './studio/CostosView'
+import { DemandaView } from './studio/DemandaView'
+import { InicioView } from './studio/InicioView'
+import { ResultadosView } from './studio/ResultadosView'
+import { RutasView } from './studio/RutasView'
+import { costPerBusHour, type StudioDay, type StudioTab } from './studio/studioModel'
+import { DemandaParamsView } from './studio/DemandaParamsView'
+import { DespachoParamsView } from './studio/DespachoParamsView'
+import { initialRuns, runOutput, type SimRun } from './studio/mockRun'
+import { StudioRibbon, type CostPreset, type ResultReport, type ScenarioPreset } from './studio/StudioRibbon'
+import { AsignacionView } from './studio/results/AsignacionView'
+import { CompararView } from './studio/results/CompararView'
+import { CumplimientoView } from './studio/results/CumplimientoView'
+import { EspacioTiempoView } from './studio/results/EspacioTiempoView'
+import { EsperaView } from './studio/results/EsperaView'
+import { HorarioView } from './studio/results/HorarioView'
+import { MapaReplayView } from './studio/results/MapaReplayView'
+import { PerfilCargaView } from './studio/results/PerfilCargaView'
+import { TurnosView } from './studio/results/TurnosView'
+import { BrochureView } from './BrochureView'
+import './studio/studioViews.css'
+import './studio/studioScreens.css'
+
+interface StudioHubProps {
+  onOpenSimulation: (scenarioId: string) => void
+}
+
+const ROUTE_LIST = [
+  'Ruta 142',
+  'Ramal Cascajal',
+  'Ramal Las Nubes',
+  'Ramal Dulce Nombre',
+  'Ramal Patio de Agua',
+  'Ramal San Rafael',
+  'Ramal Purralito',
+  'Ramal San Pedro',
+  'Ramal El Rodeo',
+  'Ramal San Francisco',
+  'Ramal La Colmena',
+]
+
+const HOURLY_DATA = [
+  { hour: '5h', pax: 39, isProfit: true },
+  { hour: '6h', pax: 35, isProfit: true },
+  { hour: '7h', pax: 26, isProfit: false },
+  { hour: '8h', pax: 24, isProfit: false },
+  { hour: '9h', pax: 13, isProfit: false },
+  { hour: '10h', pax: 8, isProfit: false },
+  { hour: '11h', pax: 6, isProfit: false },
+  { hour: '12h', pax: 8, isProfit: false },
+  { hour: '13h', pax: 9, isProfit: false },
+  { hour: '14h', pax: 7, isProfit: false },
+  { hour: '15h', pax: 19, isProfit: false },
+  { hour: '16h', pax: 23, isProfit: false },
+  { hour: '17h', pax: 36, isProfit: true },
+  { hour: '18h', pax: 23, isProfit: false },
+  { hour: '19h', pax: 6, isProfit: false },
+  { hour: '20h', pax: 11, isProfit: false },
+  { hour: '21h', pax: 8, isProfit: false },
+  { hour: '22h', pax: 2, isProfit: false },
+  { hour: '23h', pax: 1, isProfit: false },
+]
+
+const BREAK_EVEN = 34
+const BAR_SCALE_MAX = 40
+
+const ROUTE_CODES: Record<string, string> = {
+  'Ruta 142': '142',
+  'Ramal Cascajal': '142-2',
+  'Ramal Las Nubes': '145-06',
+  'Ramal Dulce Nombre': '140-03',
+  'Ramal Patio de Agua': '142-04',
+}
+
+// Heatmap: one column per service hour, 4h..23h.
+const HEAT_HOURS = Array.from({ length: 20 }, (_, i) => i + 4)
+
+// Typical load relative to break-even for each hour (1 = pays its cost).
+const HOUR_LOAD: Record<number, number> = {
+  4: 0.6, 5: 1.15, 6: 1.2, 7: 1.0, 8: 0.9, 9: 0.65, 10: 0.5, 11: 0.45, 12: 0.55, 13: 0.5,
+  14: 0.5, 15: 0.75, 16: 0.98, 17: 1.18, 18: 1.02, 19: 0.65, 20: 0.55, 21: 0.45, 22: 0.35, 23: 0.3,
+}
+const ROUTE_FACTOR = [1.05, 0.95, 0.9, 1.08, 0.88, 1.0, 0.85, 0.92, 1.0, 0.96, 0.86]
+// Small branches stop running after this hour.
+const ROUTE_LAST_HOUR = [23, 23, 22, 23, 22, 22, 21, 21, 22, 21, 20]
+
+function heatCellClass(routeIdx: number, hour: number): string {
+  if (hour > ROUTE_LAST_HOUR[routeIdx]) return 'no-service'
+  const jitter = 1 + 0.12 * Math.sin(hour * 1.7 + routeIdx * 2.3)
+  const ratio = HOUR_LOAD[hour] * ROUTE_FACTOR[routeIdx] * jitter
+  if (ratio >= 1.1) return 'deep-green'
+  if (ratio >= 0.95) return 'light-green'
+  if (ratio >= 0.8) return 'light-red'
+  return 'deep-red'
+}
+
+const LOCAL_FILES = ['Baseline_2026.xlsx', 'Flota_Eléctrica_142.xlsx', 'Ajuste_Tarifario_RE0115.xlsx', 'Sim_HoraPico_Matutina.xlsx']
+
+const CLOUD_FILES = [
+  { name: 'Compartidos_2026.xlsx', syncing: true, onlineOnly: false },
+  { name: 'Plan_Consolidado_R142.xlsx', syncing: false, onlineOnly: false },
+  { name: 'Plan_Consolidado_R142_v2.xlsx', syncing: false, onlineOnly: true },
+]
+
+const PROFIT_SHARE = [32, 26, 22, 35, 28, 24, 26, 20, 22, 28, 25]
+
+const GAUGE_VALUE = 18.7
+
+// Gauge geometry: semicircle from 0 (left) to 90 (right).
+const GAUGE_MAX = 90
+const GAUGE_CX = 130
+const GAUGE_CY = 118
+const GAUGE_R = 96
+
+function gaugePoint(value: number, r = GAUGE_R): [number, number] {
+  const angle = Math.PI * (1 - value / GAUGE_MAX)
+  return [GAUGE_CX + r * Math.cos(angle), GAUGE_CY - r * Math.sin(angle)]
+}
+
+function gaugeArc(from: number, to: number): string {
+  const [x1, y1] = gaugePoint(from)
+  const [x2, y2] = gaugePoint(to)
+  return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${GAUGE_R} ${GAUGE_R} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`
+}
+
+function FunnelIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M3 4h18l-7 8.5V19l-4 2v-8.5z" />
+    </svg>
+  )
+}
+
+function DriveIcon() {
+  return (
+    <svg width="16" height="14" viewBox="0 0 24 21" aria-label="Google Drive">
+      <path d="M8 0h8l8 14h-8z" fill="#fbbc04" />
+      <path d="M8 0 0 14l4 7 8-14z" fill="#0f9d58" />
+      <path d="M4 21h16l4-7H8z" fill="#4285f4" />
+    </svg>
+  )
+}
+
+function OneDriveIcon() {
+  return (
+    <svg width="18" height="12" viewBox="0 0 30 20" aria-label="OneDrive">
+      <path d="M7 19a6 6 0 0 1-.6-12A8 8 0 0 1 21 6a6.5 6.5 0 0 1 2 13z" fill="#0364b8" />
+    </svg>
+  )
+}
+
+function DropboxIcon() {
+  return (
+    <svg width="15" height="14" viewBox="0 0 24 22" aria-label="Dropbox">
+      <path d="M6 0 0 4l6 4 6-4zm12 0-6 4 6 4 6-4zM0 12l6 4 6-4-6-4zm18-4-6 4 6 4 6-4zM6 17.5l6 4 6-4-6-4z" fill="#0061ff" />
+    </svg>
+  )
+}
+
+function ExcelIcon() {
+  return (
+    <svg width="13" height="14" viewBox="0 0 20 22" aria-hidden="true">
+      <rect x="2" y="0" width="18" height="22" rx="2" fill="#e8f5ec" stroke="#1d6f42" strokeWidth="1.2" />
+      <rect x="0" y="5" width="11" height="12" rx="1.5" fill="#1d6f42" />
+      <path d="M3 8l5 6M8 8l-5 6" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function FolderIcon() {
+  return (
+    <svg width="14" height="12" viewBox="0 0 24 20" aria-hidden="true">
+      <path d="M0 3a2 2 0 0 1 2-2h7l2 3h11a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2z" fill="#f5b83d" />
+    </svg>
+  )
+}
+
+function CloudIcon({ sync = false }: { sync?: boolean }) {
+  return (
+    <svg width="14" height="12" viewBox="0 0 24 20" fill="none" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 17a5 5 0 0 1-.5-10A7 7 0 0 1 19 7.5a4.5 4.5 0 0 1-1 9.5z" />
+      {sync && <path d="M12 15V9m-2.5 2.5L12 9l2.5 2.5" />}
+    </svg>
+  )
+}
+
+/** BusLab mark: a bus front whose windshield shows a simulation trace. */
+function BusLabLogo() {
+  return (
+    <svg className="fs-brand-logo" width="26" height="26" viewBox="0 0 26 26" aria-label="BusLab">
+      <defs>
+        <linearGradient id="fs-buslab-bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#38bdf8" />
+          <stop offset="1" stopColor="#0369a1" />
+        </linearGradient>
+      </defs>
+      <rect width="26" height="26" rx="6" fill="url(#fs-buslab-bg)" />
+      <rect x="6" y="5" width="14" height="14" rx="3" fill="#ffffff" />
+      <rect x="8" y="7.2" width="10" height="5.6" rx="1.2" fill="#0c4a6e" />
+      <polyline points="8.8,11.6 10.8,9.4 12.6,10.8 14.6,8.2 17.2,9.6" fill="none" stroke="#4ade80" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="9.3" cy="15.8" r="1.1" fill="#f59e0b" />
+      <circle cx="16.7" cy="15.8" r="1.1" fill="#f59e0b" />
+      <rect x="7.5" y="19" width="3" height="2.5" rx="0.8" fill="#ffffff" />
+      <rect x="15.5" y="19" width="3" height="2.5" rx="0.8" fill="#ffffff" />
+    </svg>
+  )
+}
+
+// Signed-in account (mock until there is a sign-in); matches the membership screen.
+const ACCOUNT = { name: 'Guillermo Jiménez', role: 'Propietario · Gerencia', initials: 'GJ' }
+
+const RIBBON_TABS: { id: StudioTab; label: string }[] = [
+  { id: 'inicio', label: 'Inicio' },
+  { id: 'resultados', label: 'Resultados' },
+  { id: 'rutas', label: 'Rutas y Ramales' },
+  { id: 'despacho', label: 'Despacho Horario' },
+  { id: 'demanda', label: 'Nivel de Demanda' },
+  { id: 'costos', label: 'Costos' },
+  { id: 'ayuda', label: 'Ayuda' },
+]
+
+// Ejecutar now produces a run inside the Studio; the old simulator screen is no longer opened from here.
+export function StudioHub(_props: StudioHubProps) {
+  const [activeTab, setActiveTab] = useState<StudioTab>('resultados')
+  const [selectedScenarioFile, setSelectedScenarioFile] = useState<string>('Flota_Eléctrica_142.xlsx')
+  const [activeScenarioDay, setActiveScenarioDay] = useState<StudioDay>('semana')
+  const [showMembershipView, setShowMembershipView] = useState<boolean>(false)
+  const [showBrochureView, setShowBrochureView] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && window.location.search.includes('view=brochure')
+  })
+  const [filterSearch, setFilterSearch] = useState<string>('')
+  const [costConfig, setCostConfig] = useState<OperationalCostConfig>(defaultOperationalCostConfig)
+  const [schedules, setSchedules] = useState<Record<DayScheduleType, DayScheduleConfig>>(defaultDaySchedules)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [fleet, setFleet] = useState(39)
+  const [demandScale, setDemandScale] = useState(1)
+  const [rutasView, setRutasView] = useState<'diagrama' | 'tabla'>('diagrama')
+  const [demandaView, setDemandaView] = useState<'parametros' | 'analisis'>('parametros')
+  const [report, setReport] = useState<ResultReport>('mapa')
+  const [runs, setRuns] = useState<SimRun[]>(initialRuns)
+  const [currentRunId, setCurrentRunId] = useState(initialRuns[initialRuns.length - 1].id)
+  const [paramsVersion, setParamsVersion] = useState(0)
+  const [toast, setToast] = useState<string | null>(null)
+  const [routeChips, setRouteChips] = useState<string[]>([
+    'Ruta 142',
+    'Ramal Cascajal',
+    'Ramal Las Nubes',
+    'Ramal Dulce Nombre',
+    'Ramal Patio de Agua',
+  ])
+
+  const currentRun = runs.find((r) => r.id === currentRunId) ?? runs[runs.length - 1]
+  const output = runOutput(currentRun)
+  const stale = currentRun.paramsVersion !== paramsVersion
+  const hourCost = costPerBusHour(costConfig)
+
+  useEffect(() => {
+    if (!toast) return
+    const timer = window.setTimeout(() => setToast(null), 2600)
+    return () => window.clearTimeout(timer)
+  }, [toast])
+
+  // Any parameter edit makes the results of the current run out of date.
+  const touched = () => setParamsVersion((v) => v + 1)
+  const changeDay = (day: StudioDay) => {
+    setActiveScenarioDay(day)
+    touched()
+  }
+  const changeFleet = (n: number) => {
+    setFleet(n)
+    touched()
+  }
+  const changeDemandScale = (v: number) => {
+    setDemandScale(v)
+    touched()
+  }
+  const changeCost = (config: OperationalCostConfig) => {
+    setCostConfig(config)
+    touched()
+  }
+  const changeSchedule = (schedule: DayScheduleConfig) => {
+    setSchedules((prev) => ({ ...prev, [schedule.id]: schedule }))
+    touched()
+  }
+
+  const applyCostPreset = (preset: CostPreset) => {
+    const base = { ...costConfig, mode: 'aresep' as const }
+    if (preset === 'oficial') changeCost({ ...defaultOperationalCostConfig, mode: 'aresep' })
+    if (preset === 'diesel900') changeCost({ ...base, dieselPricePerLiter: 900 })
+    if (preset === 'flotaAntigua') changeCost({ ...base, maintenanceCostPerKm: 85, tiresCostPerHour: 450 })
+    if (preset === 'electrico') changeCost({ ...base, dieselPricePerLiter: 320, maintenanceCostPerKm: 30 })
+  }
+
+  const applyScenarioPreset = (preset: ScenarioPreset) => {
+    const params = simulationPresets[preset].parameters
+    setFleet(params.totalFleetSize)
+    setDemandScale(preset === 'highDemand' ? 1 : preset === 'pilot10' ? 0.25 : 0.47)
+    setSchedules((prev) => ({
+      ...prev,
+      weekday: { ...prev.weekday, valleyFleetShare: params.valleyActiveShare, nightFleetShare: params.nightActiveShare },
+    }))
+    touched()
+    setToast(`Escenario aplicado: ${simulationPresets[preset].name}`)
+  }
+
+  const runSimulation = () => {
+    const id = Math.max(...runs.map((r) => r.id)) + 1
+    const now = new Date()
+    const run: SimRun = {
+      id,
+      label: `Corrida ${id}`,
+      time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+      day: activeScenarioDay,
+      fleet,
+      demandScale,
+      costPerHour: hourCost,
+      paramsVersion,
+    }
+    setRuns((prev) => [...prev, run])
+    setCurrentRunId(id)
+    setActiveTab('resultados')
+    setShowMembershipView(false)
+    setToast(`${run.label} lista · ${runOutput(run).totals.trips.toLocaleString('es-CR')} viajes simulados`)
+  }
+
+  const resetAll = () => {
+    setCostConfig(defaultOperationalCostConfig)
+    setSchedules(defaultDaySchedules)
+    setFleet(39)
+    setDemandScale(1)
+    setActiveScenarioDay('semana')
+    touched()
+    setToast('Parámetros restablecidos a los valores oficiales')
+  }
+
+  const openTab = (tab: StudioTab) => {
+    setActiveTab(tab)
+    setShowMembershipView(false)
+  }
+
+  // Opening a simulation sheet lands on its results.
+  const openScenarioFile = (file: string) => {
+    setSelectedScenarioFile(file)
+    openTab('resultados')
+  }
+
+  const handleRemoveChip = (chipToRemove: string) => {
+    setRouteChips((prev) => prev.filter((c) => c !== chipToRemove))
+  }
+
+  const handleAddChip = () => {
+    const nextRoute = ROUTE_LIST.find((r) => !routeChips.includes(r))
+    if (nextRoute) {
+      setRouteChips((prev) => [...prev, nextRoute])
+    }
+  }
+
+  if (showBrochureView) {
+    return <BrochureView onBackToStudio={() => setShowBrochureView(false)} />
+  }
+
+  return (
+    <div className="fs-root">
+      {/* --------------------------------------------------------------------
+          1. TOP WINDOW BAR
+          -------------------------------------------------------------------- */}
+      <header className="fs-topbar">
+        <div className="fs-topbar-left">
+          <button
+            type="button"
+            className="fs-hamburger"
+            title={sidebarOpen ? 'Ocultar escenarios' : 'Mostrar escenarios'}
+            aria-expanded={sidebarOpen}
+            onClick={() => setSidebarOpen((open) => !open)}
+          >
+            ☰
+          </button>
+          <div className="fs-brand-box">
+            <BusLabLogo />
+            <div className="fs-brand-text">
+              <div className="fs-brand-name">
+                <span>
+                  Bus<span className="fs-brand-accent">Lab</span>
+                </span>
+              </div>
+              <span className="fs-brand-sub">Autobuses Unidos de Coronado S.A. - Concesión CTP N2</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Clean Center Document Name (like mockup) */}
+        <div className="fs-doc-center">
+          FleetSim_v4.2.xlsx
+        </div>
+
+        <div className="fs-topbar-right">
+          <button
+            type="button"
+            className="fs-top-btn"
+            style={{ background: '#0284c7', borderColor: '#0369a1', fontWeight: 600 }}
+            onClick={() => setShowBrochureView(true)}
+            title="Ver folleto técnico ejecutivo de funcionalidades y resultados"
+          >
+            <span>📄</span>
+            <span>Folleto Ejecutivo</span>
+          </button>
+          <button type="button" className="fs-top-btn" onClick={() => alert('Guía de Operación FleetSim v4.2')}>
+            <span style={{ color: '#facc15' }}>●</span>
+            <span>Guía</span>
+          </button>
+          <button type="button" className="fs-top-btn" onClick={() => alert('Modo Motor Estocástico BG Evolve Activo')}>
+            <span style={{ color: '#10b981' }}>●</span>
+            <span>BG Evolve</span>
+          </button>
+
+          {/* Signed-in account: opens the membership and storage settings. */}
+          <button
+            type="button"
+            className="fs-account fs-account-top"
+            onClick={() => setShowMembershipView(true)}
+            title="Cuenta, asientos y repositorio"
+          >
+            <span className="fs-avatar">{ACCOUNT.initials}</span>
+            <span className="fs-account-text">
+              <span className="fs-account-name">{ACCOUNT.name}</span>
+              <span className="fs-account-role">{ACCOUNT.role}</span>
+            </span>
+          </button>
+        </div>
+      </header>
+
+      {/* Under the header: the scenarios sidebar (toggled by the hamburger) on the left; ribbon,
+          content, sheet tabs and status bar share the column to its right. */}
+      <div className="fs-frame">
+      {/* LEFT PANEL: SCENARIOS & MODELOS */}
+      <aside className={`fs-sidebar ${sidebarOpen ? '' : 'collapsed'}`} aria-hidden={!sidebarOpen}>
+        <button
+          type="button"
+          className="fs-account fs-account-side"
+          onClick={() => setShowMembershipView(true)}
+          title="Cuenta, asientos y repositorio"
+        >
+          <span className="fs-avatar">{ACCOUNT.initials}</span>
+          <span className="fs-account-text">
+            <span className="fs-account-name">{ACCOUNT.name}</span>
+            <span className="fs-account-role">{ACCOUNT.role}</span>
+          </span>
+        </button>
+
+        <div className="fs-sidebar-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <FolderIcon />
+            <span>Scenarios &amp; Modelos</span>
+          </div>
+          <span className="fs-sidebar-filter" title="Filtrar"><FunnelIcon /></span>
+        </div>
+
+        <div className="fs-sidebar-search">
+          <input
+            type="text"
+            placeholder="Filtrar modelo..."
+            className="fs-search-input"
+            value={filterSearch}
+            onChange={(e) => setFilterSearch(e.target.value)}
+          />
+          <span className="fs-search-icon">⌕</span>
+        </div>
+
+        <div className="fs-sidebar-actions">
+          <button
+            type="button"
+            className="fs-side-action-btn"
+            onClick={() => alert('Crear nuevo modelo de simulación .xlsx / .buslab')}
+          >
+            <span>+</span>
+            <span>Nuevo</span>
+          </button>
+          <button
+            type="button"
+            className="fs-side-action-btn"
+            onClick={() => alert('Importando archivo de simulación local')}
+          >
+            <span>⤓</span>
+            <span>Importar</span>
+          </button>
+        </div>
+
+        {/* Cloud drives the explorer can read from: opens the storage settings. */}
+        <div className="fs-sidebar-cloud">
+          <button
+            type="button"
+            className="fs-cloud-pill"
+            onClick={() => setShowMembershipView(true)}
+            title="Conectar y sincronizar con Google Drive, OneDrive o Dropbox"
+          >
+            <span className="fs-cloud-icons">
+              <DriveIcon />
+              <OneDriveIcon />
+              <DropboxIcon />
+            </span>
+            <span className="fs-cloud-label">Vincular nube</span>
+          </button>
+        </div>
+
+        {/* Tree */}
+        <div className="fs-tree">
+          <div className="fs-tree-group-title">
+            <span className="fs-tree-caret">›</span>
+            <FolderIcon />
+            <span>Folders</span>
+          </div>
+
+          <div className="fs-tree-group-title">
+            <span className="fs-tree-caret open">›</span>
+            <FolderIcon />
+            <span>Locales</span>
+          </div>
+
+          {LOCAL_FILES.filter((f) => f.toLowerCase().includes(filterSearch.toLowerCase())).map((file) => (
+            <div
+              key={file}
+              className={`fs-tree-item ${selectedScenarioFile === file ? 'active' : ''}`}
+              onClick={() => openScenarioFile(file)}
+            >
+              <ExcelIcon />
+              <span>{file}</span>
+            </div>
+          ))}
+
+          <div className="fs-tree-group-title" onClick={() => setShowMembershipView(true)}>
+            <span className="fs-tree-caret open">›</span>
+            <DriveIcon />
+            <span>Google Drive (Mi unidad)</span>
+          </div>
+
+          {CLOUD_FILES.filter((f) => f.name.toLowerCase().includes(filterSearch.toLowerCase())).map((file) => (
+            <div
+              key={file.name}
+              className={`fs-tree-item ${selectedScenarioFile === file.name ? 'active' : ''}`}
+              onClick={() => openScenarioFile(file.name)}
+            >
+              {file.onlineOnly ? <CloudIcon /> : <ExcelIcon />}
+              <span>{file.name}</span>
+              {file.syncing && <span className="fs-tree-trailing"><CloudIcon sync /></span>}
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom Scenario Metadata Inspector (matching mockup) */}
+        <div className="fs-scenario-meta-box">
+          <div style={{ fontWeight: 700, color: '#1e293b' }}>Scenario</div>
+          <div>Active: {selectedScenarioFile}</div>
+          <div>Metadata: -</div>
+          <div>Escenario: 20115</div>
+          <div>Conductores: -</div>
+        </div>
+      </aside>
+
+      <div className="fs-shell">
+      {/* --------------------------------------------------------------------
+          2. RIBBON MENU TABS & ACTION GROUPS
+          -------------------------------------------------------------------- */}
+      <div className="fs-ribbon">
+        <div className="fs-ribbon-tabs">
+          {RIBBON_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={`fs-ribbon-tab ${activeTab === tab.id && !showMembershipView ? 'active' : ''}`}
+              onClick={() => openTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <StudioRibbon
+          tab={activeTab}
+          day={activeScenarioDay}
+          onDayChange={changeDay}
+          fleet={fleet}
+          onFleetChange={changeFleet}
+          demandScale={demandScale}
+          onDemandScaleChange={changeDemandScale}
+          rutasView={rutasView}
+          onRutasView={setRutasView}
+          demandaView={demandaView}
+          onDemandaView={setDemandaView}
+          costConfig={costConfig}
+          onCostMode={(mode) => changeCost({ ...costConfig, mode })}
+          onCostPreset={applyCostPreset}
+          report={report}
+          onReport={setReport}
+          onScenarioPreset={applyScenarioPreset}
+          onRun={runSimulation}
+          onReset={resetAll}
+          onOpenCloud={() => setShowMembershipView(true)}
+          notify={setToast}
+        />
+      </div>
+
+      <div className="fs-body">
+
+      <div className="fs-main">
+      {/* --------------------------------------------------------------------
+          3. FILTERS & ROUTE STRIP ("FILTROS Y RAMALES:")
+          -------------------------------------------------------------------- */}
+      {activeTab === 'resultados' && !showMembershipView && (
+      <div className="fs-filter-strip">
+        <div className="fs-filter-title">
+          <FunnelIcon />
+          <span>FILTROS Y RAMALES:</span>
+        </div>
+
+        <div className="fs-filter-control">
+          <span className="fs-filter-label">Ramal / Ruta:</span>
+          <select className="fs-filter-select" defaultValue="todas">
+            <option value="todas">Toda la flota (Activas)</option>
+            <option value="troncal">Ruta 142 Troncal</option>
+            <option value="ramales">Solo Ramales</option>
+          </select>
+        </div>
+
+        <div className="fs-filter-control">
+          <span className="fs-filter-label">Franja Horaria:</span>
+          <select className="fs-filter-select" defaultValue="dia">
+            <option value="dia">Todo el día</option>
+            <option value="pico">Hora Pico Mañana (06:00 - 08:30)</option>
+            <option value="valle">Valle Central (09:00 - 16:00)</option>
+            <option value="pico_tarde">Pico Tarde (16:30 - 19:00)</option>
+          </select>
+        </div>
+
+        <div className="fs-filter-control">
+          <span className="fs-filter-label">Unidades:</span>
+          <select className="fs-filter-select" defaultValue="todas">
+            <option value="todas">Todas (0 / 40 buses)</option>
+            <option value="activas">Solo Activas (28 buses)</option>
+            <option value="reserva">Reserva (12 buses)</option>
+          </select>
+        </div>
+
+        {/* Selected Route Badges */}
+        <div className="fs-route-chips">
+          {routeChips.map((chip) => {
+            const code = ROUTE_CODES[chip] ?? '142'
+            return (
+              <span key={chip} className="fs-route-chip">
+                <span className="fs-route-chip-code">{code}</span>
+                <span>{chip}</span>
+                <span className="fs-route-chip-close" onClick={() => handleRemoveChip(chip)}>×</span>
+              </span>
+            )
+          })}
+        </div>
+
+        <div className="fs-filter-actions">
+          <button type="button" className="fs-btn-add-chip" onClick={handleAddChip}>
+            + Agregar
+          </button>
+          <span className="fs-clear-filters" onClick={() => setRouteChips(['Ruta 142'])}>
+            <FunnelIcon /> Limpiar Filtros
+          </span>
+        </div>
+      </div>
+      )}
+
+      {/* --------------------------------------------------------------------
+          4. TWO-COLUMN WORKSPACE
+          -------------------------------------------------------------------- */}
+      {showMembershipView ? (
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <UserMembershipView onBackToDashboard={() => setShowMembershipView(false)} />
+        </div>
+      ) : (
+        <div className="fs-workspace">
+
+          {/* CENTER STAGE: 4-CARD ANALYTICS DASHBOARD */}
+          {activeTab === 'inicio' && (
+            <InicioView day={activeScenarioDay} costConfig={costConfig} scenarioFile={selectedScenarioFile} onNavigate={openTab} />
+          )}
+          {activeTab === 'rutas' && <RutasView view={rutasView} onEdit={setToast} onParamsChange={touched} />}
+          {activeTab === 'despacho' && (
+            <DespachoParamsView
+              schedules={schedules}
+              onScheduleChange={changeSchedule}
+              fleet={fleet}
+              day={activeScenarioDay}
+              onDayChange={changeDay}
+              costPerHour={hourCost}
+            />
+          )}
+          {activeTab === 'demanda' &&
+            (demandaView === 'parametros' ? (
+              <DemandaParamsView
+                schedules={schedules}
+                onScheduleChange={changeSchedule}
+                demandScale={demandScale}
+                fleet={fleet}
+                day={activeScenarioDay}
+                onDayChange={changeDay}
+                costPerHour={hourCost}
+              />
+            ) : (
+              <DemandaView day={activeScenarioDay} costConfig={costConfig} onDayChange={changeDay} />
+            ))}
+          {activeTab === 'costos' && <CostosView costConfig={costConfig} onChange={changeCost} />}
+          {activeTab === 'ayuda' && <AyudaView />}
+          {activeTab === 'resultados' && (
+            <div className="sv-results">
+              {stale && (
+                <div className="sv-stale">
+                  <span>
+                    ⚠ Los parámetros cambiaron después de <strong>{currentRun.label}</strong>. Estos resultados ya no corresponden al escenario.
+                  </span>
+                  <button type="button" className="sv-btn primary" onClick={runSimulation}>
+                    ▶ Ejecutar de nuevo
+                  </button>
+                </div>
+              )}
+              {report === 'estado' && <ResultadosView day={currentRun.day} costConfig={costConfig} scenarioFile={selectedScenarioFile} />}
+              {report === 'comparar' && <CompararView runs={runs} current={currentRun} />}
+              {report === 'horario' && <HorarioView output={output} />}
+              {report === 'asignacion' && <AsignacionView output={output} />}
+              {report === 'turnos' && <TurnosView output={output} />}
+              {report === 'espacio' && <EspacioTiempoView output={output} />}
+              {report === 'pelotonamiento' && <MapaReplayView output={output} mode="pelotonamiento" />}
+              {report === 'carga' && <PerfilCargaView output={output} />}
+              {report === 'espera' && <EsperaView output={output} />}
+              {report === 'mapa' && <MapaReplayView output={output} mode="mapa" />}
+              {report === 'cumplimiento' && <CumplimientoView output={output} />}
+              {report === 'rentabilidad' && (
+
+            <main className="fs-stage">
+              {/* TOP ROW: 2 CARDS */}
+              <div className="fs-cards-grid-top">
+                {/* Card 1: Abordajes por hora-bus (Speedometer Gauge) */}
+                <div className="fs-card">
+                  <div className="fs-card-header">
+                    <div className="fs-card-title-block">
+                      <span className="fs-card-title">Abordajes por hora-bus</span>
+                    </div>
+                    <span className="fs-help-dot" title="Promedio de pasajeros abordados por unidad y hora">?</span>
+                  </div>
+  
+                  <div className="fs-gauge-container">
+                    <svg className="fs-gauge-svg" viewBox="0 0 260 140">
+                      <path d={gaugeArc(0, BREAK_EVEN - 6)} fill="none" stroke="#c93b3b" strokeWidth="26" />
+                      <path d={gaugeArc(BREAK_EVEN - 6, BREAK_EVEN + 4)} fill="none" stroke="#f0a020" strokeWidth="26" />
+                      <path d={gaugeArc(BREAK_EVEN + 4, GAUGE_MAX)} fill="none" stroke="#3f9142" strokeWidth="26" />
+  
+                      <text x={GAUGE_CX - GAUGE_R} y={GAUGE_CY + 22} fontSize="11" fill="#475569" textAnchor="middle">0</text>
+                      <text x={GAUGE_CX + GAUGE_R} y={GAUGE_CY + 22} fontSize="11" fill="#475569" textAnchor="middle">90</text>
+  
+                      <line
+                        x1={GAUGE_CX}
+                        y1={GAUGE_CY}
+                        x2={gaugePoint(GAUGE_VALUE, GAUGE_R - 18)[0]}
+                        y2={gaugePoint(GAUGE_VALUE, GAUGE_R - 18)[1]}
+                        stroke="#1f2937"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                      />
+                      <circle cx={GAUGE_CX} cy={GAUGE_CY} r="7" fill="#1f2937" />
+                    </svg>
+  
+                    <div className="fs-gauge-value">18,7</div>
+                    <div className="fs-gauge-subtext">equilibrio 34,0</div>
+                    <span className="fs-gauge-link" onClick={() => alert('Desglose de cálculo de punto de equilibrio: ARESEP ₡340 tarifa')}>
+                      (ver desglose ⌕)
+                    </span>
+                  </div>
+                </div>
+  
+                {/* Card 2: ¿Qué horas pagan su costo? (Hourly Bar Chart) */}
+                <div className="fs-card">
+                  <div className="fs-card-header">
+                    <div className="fs-card-title-block">
+                      <span className="fs-card-title">¿Qué horas pagan su costo?</span>
+                      <span className="fs-card-sub">
+                        <span className="fs-legend-dot" style={{ background: '#3f9142' }} /> Paga su costo
+                        <span className="fs-legend-dot" style={{ background: '#c93b3b', marginLeft: '10px' }} /> Déficit · flota y ramales, por hora
+                      </span>
+                    </div>
+                    <span className="fs-help-dot" title="Abordajes por hora-bus contra el punto de equilibrio">?</span>
+                  </div>
+  
+                  <div className="fs-barchart">
+                    <div className="fs-bar-yaxis">
+                      <span>40</span>
+                      <span>20</span>
+                      <span>0</span>
+                    </div>
+                    <div className="fs-bar-plot">
+                      <div className="fs-bar-gridline" style={{ bottom: '50%' }} />
+                      <div className="fs-bar-gridline" style={{ bottom: '100%' }} />
+                      <div className="fs-bar-equilibrium" style={{ bottom: `${(BREAK_EVEN / BAR_SCALE_MAX) * 100}%` }}>
+                        <span>equilibrio 34,0</span>
+                      </div>
+                      {HOURLY_DATA.map((item) => (
+                        <div key={item.hour} className="fs-bar-col">
+                          <div
+                            className={`fs-bar-rect ${item.isProfit ? 'profit' : 'loss'}`}
+                            style={{ height: `${Math.min(100, (item.pax / BAR_SCALE_MAX) * 100)}%` }}
+                            title={`${item.hour}: ${item.pax} abordajes/hora-bus (${item.isProfit ? 'paga su costo' : 'déficit'})`}
+                          />
+                          <span className="fs-bar-hour-label">{item.hour}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+  
+              {/* BOTTOM ROW: 2 CARDS */}
+              <div className="fs-cards-grid-bottom">
+                {/* Card 3: Ruta x hora (one cell per route and hour) */}
+                <div className="fs-card">
+                  <div className="fs-card-header">
+                    <div className="fs-card-title-block">
+                      <span className="fs-card-title">Ruta x hora</span>
+                      <span className="fs-card-sub">Horas en rojo: la ruta no cubre su costo en esa hora</span>
+                    </div>
+                    <div className="fs-heat-legend">
+                      <span><i className="deep-green" /> Rentable</span>
+                      <span><i className="light-green" /> Apenas</span>
+                      <span><i className="light-red" /> Cerca</span>
+                      <span><i className="deep-red" /> Déficit</span>
+                      <span><i className="no-service" /> Sin servicio</span>
+                    </div>
+                  </div>
+  
+                  <div className="fs-heatmap" style={{ gridTemplateColumns: `112px repeat(${HEAT_HOURS.length}, 1fr)` }}>
+                    <span />
+                    {HEAT_HOURS.map((hour) => (
+                      <span key={hour} className="fs-heat-hour">{hour % 2 === 0 ? hour : ''}</span>
+                    ))}
+                    {ROUTE_LIST.map((route, rIdx) => (
+                      <React.Fragment key={route}>
+                        <span className="fs-heat-route-name" title={route}>{route}</span>
+                        {HEAT_HOURS.map((hour) => (
+                          <span key={hour} className={`fs-heat-cell ${heatCellClass(rIdx, hour)}`} title={`${route} · ${hour}:00`} />
+                        ))}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+  
+                {/* Card 4: Tiempo por nivel de ocupación (Horizontal Progress Bars) */}
+                <div className="fs-card">
+                  <div className="fs-card-header">
+                    <div className="fs-card-title-block">
+                      <span className="fs-card-title">Tiempo por nivel de ocupación</span>
+                      <span className="fs-card-sub">Proporción de la jornada con ocupación rentable</span>
+                    </div>
+                  </div>
+  
+                  <div className="fs-occupancy-list">
+                    {ROUTE_LIST.map((route, idx) => (
+                      <div key={route} className="fs-occupancy-row">
+                        <span className="fs-occupancy-name" title={route}>{route}</span>
+                        <div className="fs-occupancy-bar-bg" title={`${PROFIT_SHARE[idx]}% de la jornada rentable`}>
+                          <div className="fs-occupancy-bar-fill" style={{ width: `${PROFIT_SHARE[idx]}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </main>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* --------------------------------------------------------------------
+          6. BOTTOM WORKBOOK SHEET TABS (EXCEL STYLE)
+          -------------------------------------------------------------------- */}
+      <footer className="fs-sheet-tabs">
+        <span className="fs-sheet-nav">◀</span>
+        <span className="fs-sheet-nav">▶</span>
+        {runs.map((run) => (
+          <button
+            key={run.id}
+            type="button"
+            className={`fs-sheet-tab ${run.id === currentRunId ? 'active' : ''}`}
+            onClick={() => {
+              setCurrentRunId(run.id)
+              openTab('resultados')
+            }}
+            title={`${run.label} · ${run.time} · ${run.fleet} buses`}
+          >
+            {run.label} · {run.time}
+          </button>
+        ))}
+        <button type="button" className="fs-btn-add-sheet" onClick={runSimulation} title="Ejecutar una corrida nueva">
+          +
+        </button>
+      </footer>
+      </div>
+      </div>
+
+      {/* --------------------------------------------------------------------
+          7. BOTTOM STATUS BAR
+          -------------------------------------------------------------------- */}
+      {toast && <div className="sv-toast">{toast}</div>}
+
+      <div className="fs-statusbar">
+        <div className="fs-status-telemetry">
+          <span style={{ color: stale ? '#f59e0b' : '#10b981' }}>●</span>
+          <span>
+            {currentRun.label} · {output.totals.trips.toLocaleString('es-CR')} viajes simulados ·{' '}
+            {stale ? 'parámetros cambiados, ejecute de nuevo' : 'resultados al día'}
+          </span>
+        </div>
+
+        <div className="fs-status-controls">
+          <span style={{ cursor: 'pointer' }} title="Vista cuadrícula">⊞</span>
+          <span style={{ cursor: 'pointer' }} title="Vista dividida">⊟</span>
+          <span style={{ cursor: 'pointer' }} title="Pantalla completa">🗖</span>
+          <div className="fs-zoom-slider">
+            <span style={{ cursor: 'pointer' }}>-</span>
+            <span>100%</span>
+            <span style={{ cursor: 'pointer' }}>+</span>
+          </div>
+        </div>
+      </div>
+      </div>
+      </div>
+    </div>
+  )
+}

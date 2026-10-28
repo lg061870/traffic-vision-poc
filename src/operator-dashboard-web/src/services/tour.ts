@@ -2,9 +2,7 @@ import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 
 export function startProductTour(force = false) {
-  if (!force && typeof window !== 'undefined' && localStorage.getItem('innobus_tour_seen')) {
-    return
-  }
+  if (!force) return
 
   const driverObj = driver({
     showProgress: true,

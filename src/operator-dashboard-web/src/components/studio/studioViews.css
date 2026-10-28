@@ -1,0 +1,496 @@
+/* Content screens for the Studio ribbon tabs. Matches the card look of StudioHub.css. */
+
+.sv-stage {
+  padding: 8px 10px;
+  overflow-y: auto;
+  min-height: 0;
+  background-color: #eaeff2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sv-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sv-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.sv-subtitle {
+  font-size: 10.5px;
+  color: #64748b;
+}
+
+.sv-sim-badge {
+  font-size: 9.5px;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 3px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+.sv-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  min-height: 0;
+}
+
+.sv-grid-main-side {
+  display: grid;
+  grid-template-columns: 1fr minmax(260px, 0.42fr);
+  gap: 8px;
+  min-height: 0;
+  flex: 1;
+}
+
+.sv-card {
+  background: #ffffff;
+  border: 1px solid #d2d7de;
+  border-radius: 4px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.sv-card-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.sv-card-sub {
+  font-size: 9.5px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+/* KPI tiles */
+.sv-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.sv-kpi {
+  background: #ffffff;
+  border: 1px solid #d2d7de;
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.sv-kpi-label {
+  font-size: 10px;
+  color: #64748b;
+}
+
+.sv-kpi-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.sv-kpi-value.bad {
+  color: #8b1414;
+}
+
+.sv-kpi-value.good {
+  color: #2e6b31;
+}
+
+.sv-kpi-note {
+  font-size: 9.5px;
+  color: #64748b;
+}
+
+/* Tables */
+.sv-table-wrap {
+  overflow: auto;
+  min-height: 0;
+}
+
+.sv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sv-table th {
+  position: sticky;
+  top: 0;
+  background: #f1f4f7;
+  color: #334155;
+  font-weight: 700;
+  text-align: left;
+  padding: 5px 8px;
+  border-bottom: 1px solid #d2d7de;
+  white-space: nowrap;
+}
+
+.sv-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #eef1f4;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+.sv-table .num {
+  text-align: right;
+}
+
+.sv-table tbody tr {
+  cursor: default;
+}
+
+.sv-table tbody tr.clickable {
+  cursor: pointer;
+}
+
+.sv-table tbody tr.clickable:hover {
+  background: #f4f6f8;
+}
+
+.sv-table tbody tr.selected {
+  background: #dfe4ea;
+}
+
+.sv-table tfoot td {
+  font-weight: 700;
+  border-top: 1px solid #b8c0ca;
+  background: #f8fafc;
+}
+
+.sv-swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+
+.sv-pill {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 700;
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+
+.sv-pill.good {
+  background: #dcefd9;
+  color: #2e6b31;
+}
+
+.sv-pill.bad {
+  background: #f6dada;
+  color: #8b1414;
+}
+
+.sv-pill.neutral {
+  background: #e5e8ec;
+  color: #475569;
+}
+
+.sv-pos,
+.sv-table td.sv-pos {
+  color: #2e6b31;
+  font-weight: 700;
+}
+
+.sv-neg,
+.sv-table td.sv-neg {
+  color: #8b1414;
+  font-weight: 700;
+}
+
+/* Route stop strip */
+.sv-stops {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.sv-stop {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  color: #1e293b;
+  min-height: 26px;
+  position: relative;
+}
+
+.sv-stop-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 3px solid currentColor;
+  background: #ffffff;
+  justify-self: center;
+  z-index: 1;
+}
+
+.sv-stop-line {
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: currentColor;
+  opacity: 0.35;
+}
+
+.sv-stop-dwell {
+  font-size: 9.5px;
+  color: #64748b;
+}
+
+.sv-detail-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 12px;
+  font-size: 10.5px;
+  margin-bottom: 10px;
+}
+
+.sv-detail-list dt {
+  color: #64748b;
+}
+
+.sv-detail-list dd {
+  color: #0f172a;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Bar charts */
+.sv-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 170px;
+  padding: 0 0 16px;
+  border-bottom: 1px solid #cbd5e1;
+  position: relative;
+}
+
+.sv-bar-col {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  position: relative;
+}
+
+.sv-bar {
+  width: 80%;
+  border-radius: 1px 1px 0 0;
+  background: #5b7fa6;
+}
+
+.sv-bar.peak {
+  background: #1d4f86;
+}
+
+.sv-bar.night {
+  background: #94a9c2;
+}
+
+.sv-bar.off {
+  background: #e5e8ec;
+}
+
+.sv-bar-label {
+  position: absolute;
+  bottom: -15px;
+  font-size: 8.5px;
+  color: #64748b;
+}
+
+.sv-legend {
+  display: flex;
+  gap: 12px;
+  font-size: 9.5px;
+  color: #475569;
+  margin-top: 20px;
+}
+
+/* Form fields */
+.sv-form {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 5px 10px;
+  align-items: center;
+  font-size: 10.5px;
+}
+
+.sv-form-section {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 6px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #eef1f4;
+}
+
+.sv-form label {
+  color: #1e293b;
+}
+
+.sv-form input {
+  padding: 2px 6px;
+  font-size: 10.5px;
+  border: 1px solid #b8c0ca;
+  border-radius: 2px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sv-btn {
+  padding: 3px 10px;
+  font-size: 10.5px;
+  border: 1px solid #b8c0ca;
+  border-radius: 2px;
+  background: #ffffff;
+  cursor: pointer;
+  color: #1f2937;
+}
+
+.sv-btn:hover {
+  background: #f4f6f8;
+}
+
+.sv-btn.primary {
+  background: #17375e;
+  border-color: #17375e;
+  color: #ffffff;
+}
+
+.sv-seg {
+  display: inline-flex;
+  border: 1px solid #b8c0ca;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.sv-seg button {
+  border: none;
+  background: #ffffff;
+  padding: 3px 10px;
+  font-size: 10.5px;
+  cursor: pointer;
+  color: #1f2937;
+}
+
+.sv-seg button + button {
+  border-left: 1px solid #b8c0ca;
+}
+
+.sv-seg button.active {
+  background: #dfe4ea;
+  font-weight: 700;
+}
+
+/* Stacked cost bar */
+.sv-stack {
+  display: flex;
+  height: 18px;
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 6px 0 8px;
+}
+
+.sv-stack span {
+  display: block;
+  height: 100%;
+}
+
+/* Home tiles and help */
+.sv-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.sv-action {
+  text-align: left;
+  background: #f8fafc;
+  border: 1px solid #d2d7de;
+  border-radius: 4px;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sv-action:hover {
+  background: #eef2f6;
+  border-color: #9aa3ad;
+}
+
+.sv-action strong {
+  font-size: 11.5px;
+  color: #0f172a;
+}
+
+.sv-action span {
+  font-size: 10px;
+  color: #64748b;
+}
+
+.sv-prose {
+  font-size: 11px;
+  color: #1e293b;
+  line-height: 1.5;
+}
+
+.sv-prose h4 {
+  font-size: 11.5px;
+  margin: 10px 0 2px;
+  color: #0f172a;
+}
+
+.sv-prose h4:first-child {
+  margin-top: 0;
+}
+
+.sv-prose ul {
+  padding-left: 18px;
+  margin: 2px 0;
+}
+
+.sv-form select {
+  padding: 2px 4px;
+  font-size: 10.5px;
+  border: 1px solid #b8c0ca;
+  border-radius: 2px;
+  background: #ffffff;
+}
+
+.sv-prose p {
+  margin: 0;
+}

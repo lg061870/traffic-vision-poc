@@ -11,6 +11,7 @@ import { Modal } from './components/Modal'
 import { MetricsRibbon } from './components/MetricsRibbon'
 import { ProfitView } from './components/ProfitView'
 import { RouteRail } from './components/RouteRail'
+import { TacticalStudio } from './components/TacticalStudio'
 import { startProductTour } from './services/tour'
 import { useAssumptions } from './hooks/useAssumptions'
 import { hrefOf, useHashRoute, type Tab } from './hooks/useHashRoute'
@@ -96,13 +97,15 @@ export function App() {
     return t.revenue > 0 ? t.revenue : 5124350
   }, [rows, assumptions])
 
-  // Automatically start product tour on very first visit
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      startProductTour(false)
-    }, 1200)
-    return () => clearTimeout(timer)
-  }, [])
+
+
+  if (state.tab === 'studio') {
+    return (
+      <AssumptionsContext.Provider value={assumptions}>
+        <TacticalStudio />
+      </AssumptionsContext.Provider>
+    )
+  }
 
   return (
     <AssumptionsContext.Provider value={assumptions}>
@@ -126,6 +129,7 @@ export function App() {
             </div>
             <nav className="tabs" aria-label="Pestañas">
               {([
+                ['studio', '⚙ Estudio (Home)'],
                 ['profit', `Rentabilidad de ${day.label}`],
                 ['live', 'Radar en vivo'],
                 ['bunching', 'Diagrama de Pelotonamiento'],

@@ -3,7 +3,7 @@ import type { Period } from '../kpis'
 
 // What is on screen lives in the URL hash (#/rentabilidad?ruta=R142-01&franja=pico&bus=SJB-10662),
 // so a link opens exactly the view it was copied from and the browser's back button works.
-export type Tab = 'profit' | 'live' | 'bunching'
+export type Tab = 'studio' | 'profit' | 'live' | 'bunching'
 
 export interface ViewState {
   tab: Tab
@@ -15,7 +15,7 @@ export interface ViewState {
   vehicleId: string | null
 }
 
-const tabPaths: Record<Tab, string> = { profit: 'rentabilidad', live: 'en-vivo', bunching: 'pelotonamiento' }
+const tabPaths: Record<Tab, string> = { studio: 'estudio', profit: 'rentabilidad', live: 'en-vivo', bunching: 'pelotonamiento' }
 const periodNames: Record<Period, string | null> = { all: null, peak: 'pico', offpeak: 'valle' }
 
 export function parseHash(hash: string): ViewState {
@@ -28,11 +28,13 @@ export function parseHash(hash: string): ViewState {
   const franja = params.get('franja')
   return {
     tab:
-      first === 'en-vivo' || first === 'live'
+      first === 'rentabilidad' || first === 'profit'
+        ? 'profit'
+        : first === 'en-vivo' || first === 'live'
         ? 'live'
         : first === 'pelotonamiento' || first === 'bunching'
         ? 'bunching'
-        : 'profit',
+        : 'studio',
     routeId: params.get('ruta') ?? legacyRoute,
     period: franja === 'pico' ? 'peak' : franja === 'valle' ? 'offpeak' : 'all',
     vehicleId: params.get('bus') ?? legacyBus,

@@ -1,0 +1,111 @@
+/* Controls used by the per-tab ribbon groups (StudioRibbon.tsx). */
+
+.fs-tool-group-pinned {
+  margin-left: auto;
+  border-right: none;
+  border-left: 1px solid #e1dfdd;
+}
+
+.fs-small-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  align-self: stretch;
+}
+
+.fs-small-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px 1px 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-size: 10.5px;
+  color: #1f2937;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fs-small-btn svg {
+  color: #3a4654;
+}
+
+.fs-small-btn:hover {
+  background: #eef0f3;
+  border-color: #c8c6c4;
+}
+
+.fs-small-btn.active {
+  background: #e6e9ee;
+  border-color: #c3c9d1;
+}
+
+.fs-ribbon-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 4px;
+}
+
+.fs-spinner {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid #b8c0ca;
+  border-radius: 3px;
+  background: #ffffff;
+  height: 26px;
+  width: fit-content;
+}
+
+.fs-spinner button {
+  width: 24px;
+  border: none;
+  background: #f1f3f5;
+  cursor: pointer;
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.fs-spinner input {
+  width: 52px;
+  border: none;
+  border-left: 1px solid #dde2e8;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #17375e;
+}
+
+.fs-spinner span {
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  font-size: 10px;
+  color: #64748b;
+  border-right: 1px solid #dde2e8;
+}
+
+.fs-chip-row {
+  display: flex;
+  gap: 4px;
+}
+
+.fs-ribbon-chip {
+  border: 1px solid #b8c0ca;
+  background: #ffffff;
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: #1f2937;
+}
+
+.fs-ribbon-chip.active {
+  background: #17375e;
+  border-color: #17375e;
+  color: #ffffff;
+  font-weight: 700;
+}

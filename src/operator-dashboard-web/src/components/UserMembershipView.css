@@ -1,0 +1,200 @@
+/* ==========================================================================
+   USER MEMBERSHIP & SEAT MANAGEMENT VIEW - ASPEN HYSYS WORKSTATION STYLE
+   ========================================================================== */
+
+.um-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px 30px;
+  background-color: #f0f4f8;
+  overflow-y: auto;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.um-header-card {
+  background-color: #ffffff;
+  border: 1px solid #cbd8e6;
+  border-radius: 3px;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(16, 42, 69, 0.05);
+}
+
+.um-title-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.um-barcode-tag {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: #627d98;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.um-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #102a45;
+  margin: 4px 0 2px;
+}
+
+.um-subtitle {
+  font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #486581;
+}
+
+/* Plan summary cards grid */
+.um-plan-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 12px;
+}
+
+.um-card {
+  background-color: #ffffff;
+  border: 1px solid #cbd8e6;
+  border-radius: 3px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 1px 3px rgba(16, 42, 69, 0.04);
+}
+
+.um-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #cbd8e6;
+  padding-bottom: 6px;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #486581;
+  font-weight: 700;
+}
+
+.um-plan-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  background: linear-gradient(180deg, #fdba4e 0%, #f59e0b 38%, #e67e22 65%, #d35400 100%);
+  color: #ffffff;
+  border: 1px solid #b45309;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+}
+
+.um-card-price {
+  font-size: 24px;
+  font-weight: 800;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #102a45;
+  line-height: 1;
+}
+
+.um-feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.um-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.um-feature-item.enabled {
+  color: #059669;
+  font-weight: 600;
+}
+
+.um-feature-item.locked {
+  color: #94a3b8;
+}
+
+/* Seats table card */
+.um-seats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  margin-top: 6px;
+}
+
+.um-seats-table th {
+  text-align: left;
+  padding: 6px 8px;
+  background-color: #f0f5fa;
+  border-bottom: 1px solid #9fb7d4;
+  color: #16365c;
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.um-seats-table td {
+  padding: 8px;
+  border-bottom: 1px solid #e2ecf5;
+  color: #162e4d;
+}
+
+.um-seats-table tr.vacant {
+  background-color: #f8fafc;
+  border-left: 3px dashed #cbd8e6;
+}
+
+/* Storage & Privacy Box */
+.um-vault-box {
+  background-color: #f8fafc;
+  border: 1px solid #cbd8e6;
+  border-radius: 3px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.um-btn {
+  padding: 8px 12px;
+  background: linear-gradient(180deg, #244b7d 0%, #16365c 100%);
+  color: #fff;
+  border: 1px solid #0f2747;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  transition: all 0.15s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.um-btn:hover {
+  background: linear-gradient(180deg, #2c5994 0%, #1a3f6b 100%);
+}
+
+.um-btn.secondary {
+  background: #ffffff;
+  color: #16365c;
+  border-color: #cbd8e6;
+}
+
+.um-btn.secondary:hover {
+  background-color: #edf2f8;
+  border-color: #b2c6dc;
+}
