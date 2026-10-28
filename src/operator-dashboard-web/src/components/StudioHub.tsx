@@ -244,8 +244,8 @@ export function StudioHub(_props: StudioHubProps) {
   const [costConfig, setCostConfig] = useState<OperationalCostConfig>(defaultOperationalCostConfig)
   const [schedules, setSchedules] = useState<Record<DayScheduleType, DayScheduleConfig>>(defaultDaySchedules)
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  // Compact ribbon (icons only) is the default so the views get the room.
-  const [ribbonCompact, setRibbonCompact] = useState(true)
+  // Full ribbon by default so first-time users see the labels; compact (icons only) is opt-in.
+  const [ribbonCompact, setRibbonCompact] = useState(false)
   const [fleet, setFleet] = useState(39)
   const [demandScale, setDemandScale] = useState(1)
   const [rutasView, setRutasView] = useState<'diagrama' | 'tabla'>('diagrama')
