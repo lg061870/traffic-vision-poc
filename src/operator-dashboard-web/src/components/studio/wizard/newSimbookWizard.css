@@ -436,3 +436,212 @@
   gap: 4px;
   margin-bottom: 10px;
 }
+
+/* ---- Classic wizard window: title bar, picture panel on the left, page on the right, buttons at the
+   bottom right (< Atrás, Siguiente >, Cancelar). ---- */
+
+.wz-window {
+  display: flex;
+  flex-direction: column;
+  width: min(940px, 100%);
+  height: min(640px, 100%);
+  background: #ffffff;
+  border: 1px solid #5f6b7a;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+  font-size: 12.5px;
+  color: #1f2937;
+}
+
+.wz-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding-left: 10px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 12px;
+  color: #1f2937;
+  flex-shrink: 0;
+}
+
+.wz-close {
+  width: 46px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+}
+
+.wz-close:hover {
+  background: #e81123;
+  color: #ffffff;
+}
+
+.wz-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.wz-side {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  width: 200px;
+  flex-shrink: 0;
+  padding: 20px 14px 18px;
+  background: linear-gradient(165deg, #1b6f86 0%, #0c3238 100%);
+  color: #ffffff;
+}
+
+.wz-side .wz-steps {
+  flex-direction: column;
+  gap: 12px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.wz-side .wz-steps li.done {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.wz-side .wz-steps li.done span {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.wz-art {
+  width: 100%;
+  max-width: 170px;
+  align-self: center;
+}
+
+.wz-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  padding: 18px 0 0 24px;
+}
+
+.wz-page-title {
+  margin: 0 0 4px;
+  font-size: 21px;
+  font-weight: 400;
+  color: #17375e;
+}
+
+.wz-page-sub {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.wz-page .wz-body {
+  padding: 10px 22px 16px 0;
+}
+
+.wz-question {
+  margin: 6px 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.wz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.wz-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.wz-option input {
+  margin-top: 2px;
+  accent-color: #17375e;
+}
+
+.wz-option-label {
+  display: block;
+  font-size: 13px;
+  color: #111827;
+}
+
+.wz-option.checked .wz-option-label {
+  font-weight: 600;
+}
+
+.wz-option-desc {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #4b5563;
+}
+
+.wz-option .wz-saved {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+/* Footer band and Windows-style buttons, shared with the restore dialog. */
+.wz-footer {
+  gap: 8px;
+  padding: 10px 14px;
+  background: #f0f0f0;
+  border-top: 1px solid #dfdfdf;
+}
+
+.wz-btn,
+.wz-btn.ghost {
+  min-width: 86px;
+  height: 27px;
+  padding: 0 12px;
+  background: #e1e1e1;
+  border: 1px solid #adadad;
+  border-radius: 2px;
+  color: #111111;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.wz-btn:hover:not(:disabled) {
+  background: #e5f1fb;
+  border-color: #17607a;
+}
+
+.wz-btn.default {
+  border-color: #17375e;
+  box-shadow: inset 0 0 0 1px #17375e;
+}
+
+.wz-btn:disabled {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #9ca3af;
+  cursor: default;
+}
+
+.wz-cancel {
+  margin-left: 8px;
+}
+
+@media (max-width: 720px) {
+  .wz-side {
+    display: none;
+  }
+
+  .wz-page {
+    padding-left: 14px;
+  }
+}
