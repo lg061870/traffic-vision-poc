@@ -44,7 +44,7 @@ export function CompararView({ runs, current }: { runs: SimRun[]; current: SimRu
 
   return (
     <main className="sv-stage">
-      <ViewHeader title="Comparar corridas" subtitle="La corrida B contra la corrida A">
+      <ViewHeader title="Comparar Simsheets" subtitle="La Simsheet B contra la Simsheet A">
         <span className="sv-muted">A</span>
         {select(aId, setAId)}
         <span className="sv-muted">B</span>

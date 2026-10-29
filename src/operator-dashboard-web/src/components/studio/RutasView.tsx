@@ -7,7 +7,8 @@ const isTrunk = (r: (typeof routes)[number]) => r.isTrunk ?? r.routeId === 'R142
 interface RutasViewProps {
   view: 'diagrama' | 'tabla'
   onEdit: (message: string) => void
-  onParamsChange: () => void
+  /** Route bus counts are not part of the Simbook yet, so nothing marks the results out of date. */
+  onParamsChange?: () => void
 }
 
 export function RutasView({ view, onEdit, onParamsChange }: RutasViewProps) {
@@ -26,7 +27,7 @@ export function RutasView({ view, onEdit, onParamsChange }: RutasViewProps) {
   )
   const setBuses = (routeId: string, n: number) => {
     setBusCounts((prev) => ({ ...prev, [routeId]: Math.max(0, n) }))
-    onParamsChange()
+    onParamsChange?.()
   }
 
   return (

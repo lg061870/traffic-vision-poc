@@ -44,6 +44,10 @@ export interface StudioRibbonProps {
   onRun: () => void
   onReset: () => void
   onOpenCloud: () => void
+  onNew: () => void
+  onOpen: () => void
+  onSave: () => void
+  onSaveAs: () => void
   notify: (message: string) => void
 }
 
@@ -183,12 +187,12 @@ export function StudioRibbon(p: StudioRibbonProps) {
       groups = (
         <>
           <Group label="Archivo">
-            <BigButton icon="newFile" label="Nuevo" onClick={() => p.notify('Nuevo escenario en blanco (maqueta)')} />
+            <BigButton icon="newFile" label="Nuevo" title="Simbook nuevo con los parámetros oficiales" onClick={p.onNew} />
             <SmallStack
               items={[
-                { icon: 'folder', label: 'Abrir', onClick: () => p.notify('Abrir escenario (maqueta)') },
-                { icon: 'save', label: 'Guardar', onClick: () => p.notify('Escenario guardado (maqueta)') },
-                { icon: 'save', label: 'Guardar como…', onClick: () => p.notify('Guardar como (maqueta)') },
+                { icon: 'folder', label: 'Abrir', title: 'Abrir un Simbook (Ctrl+O)', onClick: p.onOpen },
+                { icon: 'save', label: 'Guardar', title: 'Guardar el Simbook (Ctrl+S)', onClick: p.onSave },
+                { icon: 'save', label: 'Guardar como…', title: 'Guardar una copia con otro nombre (Ctrl+Shift+S)', onClick: p.onSaveAs },
               ]}
             />
             <SmallStack
@@ -316,7 +320,7 @@ export function StudioRibbon(p: StudioRibbonProps) {
           <Group label="Finanzas">
             <BigButton {...report('rentabilidad', 'gauge', 'Rentabilidad', 'Qué horas y ramales pagan su costo')} />
             <BigButton {...report('estado', 'coin', <>Estado de<br />resultados</>, 'Ingresos, costos y margen hora por hora')} />
-            <BigButton {...report('comparar', 'compare', <>Comparar<br />corridas</>, 'Dos corridas lado a lado')} />
+            <BigButton {...report('comparar', 'compare', <>Comparar<br />Simsheets</>, 'Dos Simsheets lado a lado')} />
           </Group>
           <Group label="Operación">
             <BigButton {...report('horario', 'timetable', <>Horario de<br />salidas</>, 'Salidas de cada terminal, por ramal')} />

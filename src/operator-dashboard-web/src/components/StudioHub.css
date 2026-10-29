@@ -1418,3 +1418,8 @@ height: 100%;
 .fs-ribbon.compact .fs-spinner {
   height: 22px;
 }
+
+/* Unsaved changes in the open Simbook. */
+.fs-doc-dirty {
+  color: #fbbf24;
+}

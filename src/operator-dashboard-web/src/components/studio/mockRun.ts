@@ -1,22 +1,46 @@
 // Made-up simulation runs for designing the Studio result screens. Nothing here is a real trip
 // generator: the numbers only need to look plausible so the UI can be judged. Replace with the
 // real generator once the screens are settled.
-import type { DayScheduleConfig } from '../../config/operatorSettings'
+import { defaultDaySchedules, defaultOperationalCostConfig, type DayScheduleConfig } from '../../config/operatorSettings'
 import { officialCtpRoutes, type ManagedRoute } from '../../config/ctpRoutesData'
 import type { FeatureCollection } from 'geojson'
 import type { VehicleState } from '../../types/occupancy'
-import { scheduleFor, type StudioDay } from './studioModel'
+import { costPerBusHour, scheduleFor, type StudioDay } from './studioModel'
+import type { SimbookParams, SimsheetRecord } from './simbook'
 
+/** One Simsheet: its frozen parameters plus the figures the result screens read. */
 export interface SimRun {
   id: number
   label: string
+  /** ISO time it ran; `time` is the same as HH:MM. */
+  ranAt: string
   time: string
   day: StudioDay
   fleet: number
   demandScale: number
   costPerHour: number
-  paramsVersion: number
+  params: SimbookParams
 }
+
+export function runFromRecord({ id, label, ranAt, params }: SimsheetRecord): SimRun {
+  const at = new Date(ranAt)
+  const time = Number.isNaN(at.getTime())
+    ? '--:--'
+    : `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`
+  return {
+    id,
+    label,
+    ranAt,
+    time,
+    day: params.day,
+    fleet: params.fleet,
+    demandScale: params.demandScale,
+    costPerHour: costPerBusHour(params.costConfig),
+    params,
+  }
+}
+
+export const recordFromRun = ({ id, label, ranAt, params }: SimRun): SimsheetRecord => ({ id, label, ranAt, params })
 
 export type TripDirection = 'IDA' | 'REGRESO'
 
@@ -249,9 +273,24 @@ export function runOutput(run: SimRun): RunOutput {
   return output
 }
 
+export const defaultParams: SimbookParams = {
+  day: 'semana',
+  fleet: 39,
+  demandScale: 1,
+  costConfig: defaultOperationalCostConfig,
+  schedules: defaultDaySchedules,
+}
+
+const todayAt = (hours: number, minutes: number) => {
+  const at = new Date()
+  at.setHours(hours, minutes, 0, 0)
+  return at.toISOString()
+}
+
+/** The example Simbook the Studio opens with. */
 export const initialRuns: SimRun[] = [
-  { id: 1, label: 'Corrida 1', time: '08:12', day: 'semana', fleet: 42, demandScale: 1, costPerHour: 12950, paramsVersion: -1 },
-  { id: 2, label: 'Corrida 2', time: '09:40', day: 'semana', fleet: 30, demandScale: 1, costPerHour: 12950, paramsVersion: 0 },
+  runFromRecord({ id: 1, label: 'Simsheet 1', ranAt: todayAt(8, 12), params: { ...defaultParams, fleet: 42 } }),
+  runFromRecord({ id: 2, label: 'Simsheet 2', ranAt: todayAt(9, 40), params: { ...defaultParams, fleet: 30 } }),
 ]
 
 export const routeById = (routeId: string) => officialCtpRoutes.find((r) => r.routeId === routeId) ?? officialCtpRoutes[0]

@@ -18,7 +18,9 @@ import { RutasView } from './studio/RutasView'
 import { costPerBusHour, type StudioDay, type StudioTab } from './studio/studioModel'
 import { DemandaParamsView } from './studio/DemandaParamsView'
 import { DespachoParamsView } from './studio/DespachoParamsView'
-import { initialRuns, runOutput, type SimRun } from './studio/mockRun'
+import { defaultParams, initialRuns, recordFromRun, runFromRecord, runOutput, type SimRun } from './studio/mockRun'
+import { parseSimbook, sameParams, serializeSimbook, simbookKey, SimbookError, type SimbookParams } from './studio/simbook'
+import { canSaveInPlace, openSimbookFile, saveSimbookFile, type SimbookHandle } from './studio/simbookFile'
 import { StudioRibbon, type CostPreset, type ResultReport, type ScenarioPreset } from './studio/StudioRibbon'
 import { AsignacionView } from './studio/results/AsignacionView'
 import { CompararView } from './studio/results/CompararView'
@@ -235,25 +237,28 @@ const RIBBON_TABS: { id: StudioTab; label: string }[] = [
 export function StudioHub(_props: StudioHubProps) {
   const [activeTab, setActiveTab] = useState<StudioTab>('resultados')
   const [selectedScenarioFile, setSelectedScenarioFile] = useState<string>('Flota_Eléctrica_142.xlsx')
+  // The open Simbook: its name, where it lives (when the browser can save in place) and what was last saved.
+  const [fileName, setFileName] = useState('Ejemplo_Coronado.simbook')
+  const [fileHandle, setFileHandle] = useState<SimbookHandle | undefined>()
+  const [savedKey, setSavedKey] = useState(() => simbookKey(initialRuns[initialRuns.length - 1].params, initialRuns.map(recordFromRun)))
   const [activeScenarioDay, setActiveScenarioDay] = useState<StudioDay>('semana')
   const [showMembershipView, setShowMembershipView] = useState<boolean>(false)
   const [showBrochureView, setShowBrochureView] = useState<boolean>(() => {
     return typeof window !== 'undefined' && window.location.search.includes('view=brochure')
   })
   const [filterSearch, setFilterSearch] = useState<string>('')
-  const [costConfig, setCostConfig] = useState<OperationalCostConfig>(defaultOperationalCostConfig)
-  const [schedules, setSchedules] = useState<Record<DayScheduleType, DayScheduleConfig>>(defaultDaySchedules)
+  const [costConfig, setCostConfig] = useState<OperationalCostConfig>(initialRuns[initialRuns.length - 1].params.costConfig)
+  const [schedules, setSchedules] = useState<Record<DayScheduleType, DayScheduleConfig>>(initialRuns[initialRuns.length - 1].params.schedules)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   // Full ribbon by default so first-time users see the labels; compact (icons only) is opt-in.
   const [ribbonCompact, setRibbonCompact] = useState(false)
-  const [fleet, setFleet] = useState(39)
-  const [demandScale, setDemandScale] = useState(1)
+  const [fleet, setFleet] = useState(initialRuns[initialRuns.length - 1].params.fleet)
+  const [demandScale, setDemandScale] = useState(initialRuns[initialRuns.length - 1].params.demandScale)
   const [rutasView, setRutasView] = useState<'diagrama' | 'tabla'>('diagrama')
   const [demandaView, setDemandaView] = useState<'parametros' | 'analisis'>('parametros')
   const [report, setReport] = useState<ResultReport>('mapa')
   const [runs, setRuns] = useState<SimRun[]>(initialRuns)
   const [currentRunId, setCurrentRunId] = useState(initialRuns[initialRuns.length - 1].id)
-  const [paramsVersion, setParamsVersion] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const [routeChips, setRouteChips] = useState<string[]>([
     'Ruta 142',
@@ -265,7 +270,10 @@ export function StudioHub(_props: StudioHubProps) {
 
   const currentRun = runs.find((r) => r.id === currentRunId) ?? runs[runs.length - 1]
   const output = runOutput(currentRun)
-  const stale = currentRun.paramsVersion !== paramsVersion
+  const params: SimbookParams = { day: activeScenarioDay, fleet, demandScale, costConfig, schedules }
+  // The results are out of date when the parameters on screen are not the ones this Simsheet ran with.
+  const stale = !sameParams(currentRun.params, params)
+  const dirty = simbookKey(params, runs.map(recordFromRun)) !== savedKey
   const hourCost = costPerBusHour(costConfig)
 
   useEffect(() => {
@@ -274,28 +282,92 @@ export function StudioHub(_props: StudioHubProps) {
     return () => window.clearTimeout(timer)
   }, [toast])
 
-  // Any parameter edit makes the results of the current run out of date.
-  const touched = () => setParamsVersion((v) => v + 1)
-  const changeDay = (day: StudioDay) => {
-    setActiveScenarioDay(day)
-    touched()
+  const changeDay = setActiveScenarioDay
+  const changeFleet = setFleet
+  const changeDemandScale = setDemandScale
+  const changeCost = setCostConfig
+  const changeSchedule = (schedule: DayScheduleConfig) => setSchedules((prev) => ({ ...prev, [schedule.id]: schedule }))
+
+  const loadParams = (p: SimbookParams) => {
+    setActiveScenarioDay(p.day)
+    setFleet(p.fleet)
+    setDemandScale(p.demandScale)
+    setCostConfig(p.costConfig)
+    setSchedules(p.schedules)
   }
-  const changeFleet = (n: number) => {
-    setFleet(n)
-    touched()
+
+  const loadSimbook = (name: string, handle: SimbookHandle | undefined, p: SimbookParams, sheets: SimRun[]) => {
+    loadParams(p)
+    setRuns(sheets)
+    setCurrentRunId(sheets[sheets.length - 1].id)
+    setFileName(name)
+    setFileHandle(handle)
+    setSavedKey(simbookKey(p, sheets.map(recordFromRun)))
+    setShowMembershipView(false)
+    setActiveTab('resultados')
   }
-  const changeDemandScale = (v: number) => {
-    setDemandScale(v)
-    touched()
+
+  const discardChanges = () => !dirty || window.confirm(`${fileName} tiene cambios sin guardar. ¿Descartarlos?`)
+
+  // A new Simbook starts from the official parameters, already run once as its Simsheet 1.
+  const newSimbook = () => {
+    if (!discardChanges()) return
+    loadSimbook('Sin título.simbook', undefined, defaultParams, [
+      runFromRecord({ id: 1, label: 'Simsheet 1', ranAt: new Date().toISOString(), params: defaultParams }),
+    ])
+    setToast('Simbook nuevo con los parámetros oficiales')
   }
-  const changeCost = (config: OperationalCostConfig) => {
-    setCostConfig(config)
-    touched()
+
+  const openSimbook = async () => {
+    if (!discardChanges()) return
+    try {
+      const opened = await openSimbookFile()
+      if (!opened) return
+      const book = parseSimbook(opened.text, defaultParams)
+      loadSimbook(opened.name, opened.handle, book.params, book.simsheets.map(runFromRecord))
+      setToast(`${opened.name} abierto · ${book.simsheets.length} Simsheet${book.simsheets.length === 1 ? '' : 's'}`)
+    } catch (error) {
+      setToast(error instanceof SimbookError ? error.message : 'No se pudo abrir el archivo.')
+    }
   }
-  const changeSchedule = (schedule: DayScheduleConfig) => {
-    setSchedules((prev) => ({ ...prev, [schedule.id]: schedule }))
-    touched()
+
+  const saveSimbook = async (saveAs: boolean) => {
+    const sheets = runs.map(recordFromRun)
+    try {
+      const saved = await saveSimbookFile(serializeSimbook(params, sheets), fileName, saveAs ? undefined : fileHandle)
+      if (!saved) return
+      setFileName(saved.name)
+      setFileHandle(saved.handle)
+      setSavedKey(simbookKey(params, sheets))
+      setToast(saved.handle ? `Guardado en ${saved.name}` : `${saved.name} descargado (este navegador no guarda sobre el mismo archivo)`)
+    } catch {
+      setToast('No se pudo guardar el Simbook.')
+    }
   }
+
+  // Ctrl+S saves, Ctrl+Shift+S saves as, Ctrl+O opens; closing the tab with unsaved changes asks first.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return
+      const key = e.key.toLowerCase()
+      if (key === 's') {
+        e.preventDefault()
+        void saveSimbook(e.shiftKey)
+      } else if (key === 'o') {
+        e.preventDefault()
+        void openSimbook()
+      }
+    }
+    const onUnload = (e: BeforeUnloadEvent) => {
+      if (dirty) e.preventDefault()
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('beforeunload', onUnload)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('beforeunload', onUnload)
+    }
+  })
 
   const applyCostPreset = (preset: CostPreset) => {
     const base = { ...costConfig, mode: 'aresep' as const }
@@ -313,23 +385,12 @@ export function StudioHub(_props: StudioHubProps) {
       ...prev,
       weekday: { ...prev.weekday, valleyFleetShare: params.valleyActiveShare, nightFleetShare: params.nightActiveShare },
     }))
-    touched()
     setToast(`Escenario aplicado: ${simulationPresets[preset].name}`)
   }
 
   const runSimulation = () => {
     const id = Math.max(...runs.map((r) => r.id)) + 1
-    const now = new Date()
-    const run: SimRun = {
-      id,
-      label: `Corrida ${id}`,
-      time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
-      day: activeScenarioDay,
-      fleet,
-      demandScale,
-      costPerHour: hourCost,
-      paramsVersion,
-    }
+    const run = runFromRecord({ id, label: `Simsheet ${id}`, ranAt: new Date().toISOString(), params })
     setRuns((prev) => [...prev, run])
     setCurrentRunId(id)
     setActiveTab('resultados')
@@ -343,7 +404,6 @@ export function StudioHub(_props: StudioHubProps) {
     setFleet(39)
     setDemandScale(1)
     setActiveScenarioDay('semana')
-    touched()
     setToast('Parámetros restablecidos a los valores oficiales')
   }
 
@@ -403,8 +463,9 @@ export function StudioHub(_props: StudioHubProps) {
         </div>
 
         {/* Clean Center Document Name (like mockup) */}
-        <div className="fs-doc-center">
-          FleetSim_v4.2.xlsx
+        <div className="fs-doc-center" title={dirty ? 'Cambios sin guardar' : canSaveInPlace ? 'Guardado' : undefined}>
+          {fileName}
+          {dirty && <span className="fs-doc-dirty"> •</span>}
         </div>
 
         <div className="fs-topbar-right">
@@ -484,7 +545,8 @@ export function StudioHub(_props: StudioHubProps) {
           <button
             type="button"
             className="fs-side-action-btn"
-            onClick={() => alert('Crear nuevo modelo de simulación .xlsx / .buslab')}
+            onClick={newSimbook}
+            title="Simbook nuevo con los parámetros oficiales"
           >
             <span>+</span>
             <span>Nuevo</span>
@@ -492,10 +554,11 @@ export function StudioHub(_props: StudioHubProps) {
           <button
             type="button"
             className="fs-side-action-btn"
-            onClick={() => alert('Importando archivo de simulación local')}
+            onClick={() => void openSimbook()}
+            title="Abrir un Simbook de esta computadora (Ctrl+O)"
           >
             <span>⤓</span>
-            <span>Importar</span>
+            <span>Abrir</span>
           </button>
         </div>
 
@@ -563,7 +626,7 @@ export function StudioHub(_props: StudioHubProps) {
         {/* Bottom Scenario Metadata Inspector (matching mockup) */}
         <div className="fs-scenario-meta-box">
           <div style={{ fontWeight: 700, color: '#1e293b' }}>Scenario</div>
-          <div>Active: {selectedScenarioFile}</div>
+          <div>Active: {fileName}</div>
           <div>Metadata: -</div>
           <div>Escenario: 20115</div>
           <div>Conductores: -</div>
@@ -618,6 +681,10 @@ export function StudioHub(_props: StudioHubProps) {
           onRun={runSimulation}
           onReset={resetAll}
           onOpenCloud={() => setShowMembershipView(true)}
+          onNew={newSimbook}
+          onOpen={() => void openSimbook()}
+          onSave={() => void saveSimbook(false)}
+          onSaveAs={() => void saveSimbook(true)}
           notify={setToast}
         />
       </div>
@@ -700,9 +767,9 @@ export function StudioHub(_props: StudioHubProps) {
 
           {/* CENTER STAGE: 4-CARD ANALYTICS DASHBOARD */}
           {activeTab === 'inicio' && (
-            <InicioView day={activeScenarioDay} costConfig={costConfig} scenarioFile={selectedScenarioFile} onNavigate={openTab} />
+            <InicioView day={activeScenarioDay} costConfig={costConfig} scenarioFile={fileName} onNavigate={openTab} />
           )}
-          {activeTab === 'rutas' && <RutasView view={rutasView} onEdit={setToast} onParamsChange={touched} />}
+          {activeTab === 'rutas' && <RutasView view={rutasView} onEdit={setToast} />}
           {activeTab === 'despacho' && (
             <DespachoParamsView
               schedules={schedules}
@@ -741,7 +808,7 @@ export function StudioHub(_props: StudioHubProps) {
                   </button>
                 </div>
               )}
-              {report === 'estado' && <ResultadosView day={currentRun.day} costConfig={costConfig} scenarioFile={selectedScenarioFile} />}
+              {report === 'estado' && <ResultadosView day={currentRun.day} costConfig={costConfig} scenarioFile={fileName} />}
               {report === 'comparar' && <CompararView runs={runs} current={currentRun} />}
               {report === 'horario' && <HorarioView output={output} />}
               {report === 'asignacion' && <AsignacionView output={output} />}
@@ -917,7 +984,7 @@ export function StudioHub(_props: StudioHubProps) {
             {run.label} · {run.time}
           </button>
         ))}
-        <button type="button" className="fs-btn-add-sheet" onClick={runSimulation} title="Ejecutar una corrida nueva">
+        <button type="button" className="fs-btn-add-sheet" onClick={runSimulation} title="Ejecutar una Simsheet nueva">
           +
         </button>
       </footer>
