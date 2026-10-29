@@ -1,18 +1,30 @@
-// The parameters a Simsheet ran with, read-only and laid out like the Nuevo Simbook wizard, with every
-// difference from Simsheet 1 (the baseline) marked. Editing starts a draft; the Simsheet never changes.
-import { useState } from 'react'
+// A set of parameters (a Simsheet's, or the draft's), read-only and laid out like the Nuevo Simbook
+// wizard, with every difference from Simsheet 1 (the baseline) marked.
+import { useState, type ReactNode } from 'react'
 import type { SimRun } from '../mockRun'
-import type { FieldSource } from '../simbook'
+import type { FieldSource, Provenance, SimbookParams } from '../simbook'
 import { routes } from '../studioModel'
 import { ViewHeader } from '../ViewHeader'
 import { readField, SECTIONS, type Company, type FieldDef, type FieldValue } from '../wizard/wizardModel'
 import '../wizard/newSimbookWizard.css'
 
-interface Props {
-  run: SimRun
-  baseline: SimRun
+interface Subject {
+  label: string
+  params: SimbookParams
+  provenance: Provenance
+}
+
+interface ReviewProps {
+  subject: Subject
+  /** Simsheet 1; null while the Simbook has none. */
+  baseline: SimRun | null
   company: Company | null
-  onEditInDraft: () => void
+  title: string
+  subtitle: string
+  /** The bar under the title: what this is and what can be done with it. */
+  bar: ReactNode
+  /** Said when nothing differs from the baseline. */
+  sameAsBaseline: ReactNode
 }
 
 const SOURCE_LABEL: Record<FieldSource, string> = {
@@ -32,51 +44,70 @@ function show(field: FieldDef, value: FieldValue) {
   return String(value)
 }
 
-export function SimsheetParamsView({ run, baseline, company, onEditInDraft }: Props) {
-  const [sectionIndex, setSectionIndex] = useState(0)
-  const isBaseline = run.id === baseline.id
+/** The parameters a Simsheet ran with. Editing starts a draft; the Simsheet never changes. */
+export function SimsheetParamsView({ run, baseline, company, onEditInDraft }: { run: SimRun; baseline: SimRun; company: Company | null; onEditInDraft: () => void }) {
+  const ranAt = new Date(run.ranAt)
+  return (
+    <ParamsReview
+      subject={run}
+      baseline={baseline}
+      company={company}
+      title={`Parámetros de ${run.label}`}
+      subtitle={`Ejecutada ${Number.isNaN(ranAt.getTime()) ? '' : ranAt.toLocaleString('es-CR')}${run.ranBy ? ` por ${run.ranBy}` : ''} · método estándar · motor ${run.engineVersion || 'desconocido'} · semilla ${run.seed}`}
+      bar={
+        <>
+          <span>🔒 Solo lectura: una Simsheet ejecutada no cambia.</span>
+          <span className="wz-spacer" />
+          <button type="button" className="sv-btn primary" onClick={onEditInDraft}>
+            ✎ Editar en un borrador
+          </button>
+        </>
+      }
+      sameAsBaseline={
+        run.id === baseline.id ? (
+          <>
+            <strong>Línea base.</strong> Las demás Simsheets se comparan con esta.
+          </>
+        ) : (
+          <>
+            <strong>Sin cambios vs. {baseline.label}.</strong> Mismos parámetros; los resultados pueden variar porque la simulación es aleatoria.
+          </>
+        )
+      }
+    />
+  )
+}
 
-  const valueOf = (r: SimRun, f: FieldDef) => readField(r.params, company ?? NO_COMPANY, f.path)
-  const changed = (f: FieldDef) => !f.path.startsWith('company.') && valueOf(run, f) !== valueOf(baseline, f)
+export function ParamsReview({ subject, baseline, company, title, subtitle, bar, sameAsBaseline }: ReviewProps) {
+  const [sectionIndex, setSectionIndex] = useState(0)
+
+  const valueOf = (params: SimbookParams, f: FieldDef) => readField(params, company ?? NO_COMPANY, f.path)
+  const changed = (f: FieldDef) =>
+    baseline !== null && !f.path.startsWith('company.') && valueOf(subject.params, f) !== valueOf(baseline.params, f)
   const changes = SECTIONS.flatMap((s) => s.fields.filter(changed).map((f) => ({ section: s, field: f })))
 
   const section = SECTIONS[sectionIndex]
   const groups = [...new Set(section.fields.map((f) => f.group ?? ''))]
-  const ranAt = new Date(run.ranAt)
 
   return (
     <main className="sv-stage">
-      <ViewHeader
-        title={`Parámetros de ${run.label}`}
-        subtitle={`Ejecutada ${Number.isNaN(ranAt.getTime()) ? '' : ranAt.toLocaleString('es-CR')}${run.ranBy ? ` por ${run.ranBy}` : ''} · método estándar · motor ${run.engineVersion || 'desconocido'} · semilla ${run.seed}`}
-      />
+      <ViewHeader title={title} subtitle={subtitle} />
 
-      <div className="sv-card sp-bar">
-        <span>🔒 Solo lectura: una Simsheet ejecutada no cambia.</span>
-        <span className="wz-spacer" />
-        <button type="button" className="sv-btn primary" onClick={onEditInDraft}>
-          ✎ Editar en un borrador
-        </button>
-      </div>
+      <div className="sv-card sp-bar">{bar}</div>
 
       <div className="sv-card sp-changes">
-        {isBaseline ? (
-          <span>
-            <strong>Línea base.</strong> Las demás Simsheets se comparan con esta.
-          </span>
-        ) : changes.length === 0 ? (
-          <span>
-            <strong>Sin cambios vs. {baseline.label}.</strong> Mismos parámetros; los resultados pueden variar porque la simulación es aleatoria.
-          </span>
+        {!baseline || changes.length === 0 ? (
+          <span>{sameAsBaseline}</span>
         ) : (
           <>
             <strong>
-              Cambios vs. {baseline.label} ({changes.length})
+              Cambios vs. {baseline!.label} ({changes.length})
             </strong>
             <ul>
               {changes.map(({ section: s, field: f }) => (
                 <li key={f.path}>
-                  {s.title} · {[f.group, f.label].filter(Boolean).join(' · ')}: {show(f, valueOf(baseline, f))} <b>→</b> {show(f, valueOf(run, f))}
+                  {s.title} · {[f.group, f.label].filter(Boolean).join(' · ')}: {show(f, valueOf(baseline!.params, f))} <b>→</b>{' '}
+                  {show(f, valueOf(subject.params, f))}
                 </li>
               ))}
             </ul>
@@ -126,18 +157,18 @@ export function SimsheetParamsView({ run, baseline, company, onEditInDraft }: Pr
                 {section.fields
                   .filter((f) => (f.group ?? '') === group && !(f.path.startsWith('company.') && !company))
                   .map((f) => {
-                    const entry = run.provenance[f.path]
+                    const entry = subject.provenance[f.path]
                     const diff = changed(f)
                     return (
                       <div key={f.path} className={`wz-field src-${entry?.source ?? 'vacio'} ${diff ? 'sp-changed' : ''}`}>
                         <span className="wz-field-label">{f.label}</span>
-                        <span className="sp-value">{show(f, valueOf(run, f))}</span>
+                        <span className="sp-value">{show(f, valueOf(subject.params, f))}</span>
                         <span className="wz-source">
                           {entry ? SOURCE_LABEL[entry.source] : 'Fuente sin registrar'}
                           {entry?.reference ? ` · ${entry.reference}` : ''}
                           {entry?.date ? ` · ${entry.date}` : ''}
                         </span>
-                        {diff && <span className="sp-was">{baseline.label}: {show(f, valueOf(baseline, f))}</span>}
+                        {diff && baseline && <span className="sp-was">{baseline.label}: {show(f, valueOf(baseline.params, f))}</span>}
                       </div>
                     )
                   })}

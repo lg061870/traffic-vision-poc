@@ -1423,3 +1423,9 @@ height: 100%;
 .fs-doc-dirty {
   color: #fbbf24;
 }
+
+/* The draft's tab: parameters not run yet. */
+.fs-sheet-tab-draft {
+  font-style: italic;
+  border-top: 2px solid #f59e0b !important;
+}

@@ -32,7 +32,7 @@ import {
   type SimbookParams,
   type SimsheetRecord,
 } from './studio/simbook'
-import { autoEntryFor, deriveProvenance, fieldLabel, readField, todayIso } from './studio/wizard/wizardModel'
+import { autoEntryFor, changedPaths, deriveProvenance, fieldLabel, readField, todayIso } from './studio/wizard/wizardModel'
 import { SimbookInstructions } from './studio/SimbookInstructions'
 import { NewSimbookWizard, type NewSimbookResult } from './studio/wizard/NewSimbookWizard'
 import { RestoreParamsDialog, type RestoreChoice } from './studio/wizard/RestoreParamsDialog'
@@ -52,7 +52,7 @@ import { EspacioTiempoView } from './studio/results/EspacioTiempoView'
 import { EsperaView } from './studio/results/EsperaView'
 import { HorarioView } from './studio/results/HorarioView'
 import { MapaReplayView } from './studio/results/MapaReplayView'
-import { SimsheetParamsView } from './studio/results/SimsheetParamsView'
+import { ParamsReview, SimsheetParamsView } from './studio/results/SimsheetParamsView'
 import { PerfilCargaView } from './studio/results/PerfilCargaView'
 import { TurnosView } from './studio/results/TurnosView'
 import { BrochureView } from './BrochureView'
@@ -293,7 +293,11 @@ export function StudioHub(_props: StudioHubProps) {
   const [demandaView, setDemandaView] = useState<'parametros' | 'analisis'>('parametros')
   const [report, setReport] = useState<ResultReport>('mapa')
   const [runs, setRuns] = useState<SimRun[]>(initialRuns)
+  // The Simsheet whose results are on screen, and the one the draft started from: separate, so looking at
+  // an older Simsheet does not move the draft.
   const [currentRunId, setCurrentRunId] = useState(initialRuns[initialRuns.length - 1].id)
+  const [draftBasisId, setDraftBasisId] = useState<number | null>(initialRuns[initialRuns.length - 1].id)
+  const [viewingDraft, setViewingDraft] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [routeChips, setRouteChips] = useState<string[]>([
     'Ruta 142',
@@ -307,20 +311,22 @@ export function StudioHub(_props: StudioHubProps) {
   const currentRun: SimRun | undefined = runs.find((r) => r.id === currentRunId) ?? runs[runs.length - 1]
   const output = currentRun ? runOutput(currentRun) : null
   const params: SimbookParams = { day: activeScenarioDay, fleet, demandScale, costConfig, schedules }
-  // The results are out of date when the parameters on screen are not the ones this Simsheet ran with.
-  const stale = currentRun != null && !sameParams(currentRun.params, params)
-  // Parameters not run yet are saved as the draft: all of them in a new Simbook, or edits since a Simsheet.
+  // Parameters not run yet are the draft: all of them in a new Simbook, or edits since the Simsheet the
+  // draft started from.
+  const basisRun: SimRun | undefined = runs.find((r) => r.id === draftBasisId) ?? runs[runs.length - 1]
+  const hasDraft = !basisRun || !sameParams(basisRun.params, params)
   const provenance = deriveProvenance(baseProvenance, baseParams, params, todayIso())
-  const draft: SimbookDraft | null = !currentRun
-    ? { basedOn: null, params, provenance }
-    : stale
-      ? { basedOn: currentRun.id, params, provenance }
-      : null
+  const draft: SimbookDraft | null = hasDraft ? { basedOn: basisRun?.id ?? null, params, provenance } : null
+  const showDraft = draft !== null && (viewingDraft || !currentRun)
+  const draftChanges = draft && runs[0] ? changedPaths(runs[0].params, draft.params).length : 0
   // A missing value stops counting once the operator enters one.
   const noCompany = { name: '', concession: '' }
   const missing = missingPaths.filter((path) => readField(params, noCompany, path) === readField(baseParams, noCompany, path))
   const dirty = simbookKey(meta, draft, runs.map(recordFromRun)) !== savedKey
   const hourCost = costPerBusHour(costConfig)
+
+  // The Borrador tab opens as soon as there is a draft, and closes when it is run or discarded.
+  useEffect(() => setViewingDraft(hasDraft), [hasDraft])
 
   useEffect(() => {
     if (!toast) return
@@ -357,7 +363,9 @@ export function StudioHub(_props: StudioHubProps) {
     setBaseParams(loaded.params)
     setBaseProvenance(loaded.provenance)
     setRuns(sheets)
-    setCurrentRunId(book.draft?.basedOn ?? last?.id ?? 0)
+    setCurrentRunId(last?.id ?? 0)
+    setDraftBasisId(book.draft ? book.draft.basedOn : (last?.id ?? null))
+    setViewingDraft(book.draft !== null)
     setFileName(name)
     setFileHandle(handle)
     // A book that was never saved counts as unsaved changes.
@@ -394,7 +402,7 @@ export function StudioHub(_props: StudioHubProps) {
 
   // Explicit, never automatic: the parameters on screen become the defaults for new Simbooks.
   const saveDefaults = () => {
-    const what = currentRun && !stale ? `${currentRun.label} de ${fileName}` : `borrador de ${fileName}`
+    const what = basisRun && !hasDraft ? `${basisRun.label} de ${fileName}` : `borrador de ${fileName}`
     const question = `${savedParams ? '¿Reemplazar sus parámetros guardados' : '¿Guardar como sus parámetros predeterminados'} con los valores de ${what}?\n\n${SHARED_COMPUTER_WARNING}`
     if (!window.confirm(question)) return
     if (storeDefaults({ company: meta?.company ?? { name: '', concession: '' }, params, provenance, origin: what })) {
@@ -442,6 +450,7 @@ export function StudioHub(_props: StudioHubProps) {
     setBaseProvenance(run.provenance)
     setMissingPaths([])
     setCurrentRunId(run.id)
+    setDraftBasisId(run.id)
     setActiveTab('despacho')
     setToast(`Borrador basado en ${run.label}: cambie los parámetros y ejecute para crear la Simsheet ${Math.max(...runs.map((r) => r.id)) + 1}`)
   }
@@ -537,9 +546,23 @@ export function StudioHub(_props: StudioHubProps) {
     setBaseParams(params)
     setBaseProvenance(provenance)
     setCurrentRunId(id)
+    setDraftBasisId(id)
+    setViewingDraft(false)
     setActiveTab('resultados')
     setShowMembershipView(false)
     setToast(`${run.label} lista · ${runOutput(run).totals.trips.toLocaleString('es-CR')} viajes simulados`)
+  }
+
+  // Back to the parameters of the Simsheet the draft started from.
+  const discardDraft = () => {
+    if (!basisRun) return
+    if (!window.confirm(`¿Descartar el borrador y volver a los parámetros de ${basisRun.label}?`)) return
+    loadParams(basisRun.params)
+    setBaseParams(basisRun.params)
+    setBaseProvenance(basisRun.provenance)
+    setMissingPaths([])
+    setCurrentRunId(basisRun.id)
+    setToast(`Borrador descartado: de vuelta en ${basisRun.label}`)
   }
 
   const resetAll = () => {
@@ -977,16 +1000,50 @@ export function StudioHub(_props: StudioHubProps) {
               <SimbookInstructions />
             </div>
           )}
-          {activeTab === 'resultados' && currentRun && output && (
+          {activeTab === 'resultados' && currentRun && showDraft && draft && (
             <div className="sv-results">
               {missingBanner}
-              {stale && (
+              <ParamsReview
+                subject={{ label: 'Borrador', params: draft.params, provenance: draft.provenance }}
+                baseline={runs[0]}
+                company={meta?.company ?? null}
+                title="Borrador · sin ejecutar"
+                subtitle={`Basado en ${basisRun?.label ?? 'el Simbook'} · se guarda con el Simbook · los valores se editan en Despacho Horario, Nivel de Demanda y Costos`}
+                bar={
+                  <>
+                    <span>✎ Borrador basado en {basisRun?.label}: todavía no tiene resultados.</span>
+                    <span className="wz-spacer" />
+                    <button type="button" className="sv-btn" onClick={discardDraft}>
+                      Descartar borrador
+                    </button>
+                    <button type="button" className="sv-btn primary" onClick={runSimulation}>
+                      ▶ Ejecutar → Simsheet {Math.max(0, ...runs.map((r) => r.id)) + 1}
+                    </button>
+                  </>
+                }
+                sameAsBaseline={
+                  <>
+                    <strong>Sin cambios vs. {runs[0].label}.</strong> Puede ejecutarlo igual: los resultados varían porque la simulación es aleatoria.
+                  </>
+                }
+              />
+            </div>
+          )}
+          {activeTab === 'resultados' && currentRun && output && !showDraft && (
+            <div className="sv-results">
+              {missingBanner}
+              {hasDraft && basisRun && (
                 <div className="sv-stale">
                   <span>
-                    ⚠ Los parámetros cambiaron después de <strong>{currentRun.label}</strong>. Estos resultados ya no corresponden al escenario.
+                    ✎ Hay un borrador sin ejecutar, basado en <strong>{basisRun.label}</strong>. Estos resultados son de{' '}
+                    <strong>{currentRun.label}</strong>.
                   </span>
+                  <span className="wz-spacer" />
+                  <button type="button" className="sv-btn" onClick={() => setViewingDraft(true)}>
+                    Ver borrador
+                  </button>
                   <button type="button" className="sv-btn primary" onClick={runSimulation}>
-                    ▶ Ejecutar de nuevo
+                    ▶ Ejecutar
                   </button>
                 </div>
               )}
@@ -1159,9 +1216,10 @@ export function StudioHub(_props: StudioHubProps) {
           <button
             key={run.id}
             type="button"
-            className={`fs-sheet-tab ${run.id === currentRunId ? 'active' : ''}`}
+            className={`fs-sheet-tab ${run.id === currentRunId && !showDraft ? 'active' : ''}`}
             onClick={() => {
               setCurrentRunId(run.id)
+              setViewingDraft(false)
               openTab('resultados')
             }}
             title={`${run.label} · ${run.time} · ${run.fleet} buses`}
@@ -1169,6 +1227,19 @@ export function StudioHub(_props: StudioHubProps) {
             {run.label} · {run.time}
           </button>
         ))}
+        {draft && (
+          <button
+            type="button"
+            className={`fs-sheet-tab fs-sheet-tab-draft ${showDraft ? 'active' : ''}`}
+            onClick={() => {
+              setViewingDraft(true)
+              openTab('resultados')
+            }}
+            title={basisRun ? `Borrador basado en ${basisRun.label}, sin ejecutar` : 'Borrador inicial, sin ejecutar'}
+          >
+            ✎ Borrador · sin ejecutar
+          </button>
+        )}
         <button type="button" className="fs-btn-add-sheet" onClick={runSimulation} title="Ejecutar una Simsheet nueva">
           +
         </button>
@@ -1193,16 +1264,13 @@ export function StudioHub(_props: StudioHubProps) {
 
       <div className="fs-statusbar">
         <div className="fs-status-telemetry">
-          <span style={{ color: stale || !output ? '#f59e0b' : '#10b981' }}>●</span>
+          <span style={{ color: hasDraft ? '#f59e0b' : '#10b981' }}>●</span>
           <span>
-            {currentRun && output ? (
-              <>
-                {currentRun.label} · {output.totals.trips.toLocaleString('es-CR')} viajes simulados ·{' '}
-                {stale ? 'parámetros cambiados, ejecute de nuevo' : 'resultados al día'}
-              </>
-            ) : (
-              'Borrador inicial · todavía no hay Simsheets'
-            )}
+            {!currentRun || !output
+              ? 'Borrador inicial · todavía no hay Simsheets'
+              : showDraft
+                ? `Borrador basado en ${basisRun?.label} · ${draftChanges} cambio${draftChanges === 1 ? '' : 's'} vs. ${runs[0].label} · sin ejecutar`
+                : `${currentRun.label} · ${output.totals.trips.toLocaleString('es-CR')} viajes simulados · ${hasDraft ? 'hay un borrador sin ejecutar' : 'resultados al día'}`}
           </span>
         </div>
 

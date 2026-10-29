@@ -206,3 +206,9 @@ export function deriveProvenance(base: Provenance, baseParams: SimbookParams, pa
 }
 
 export const todayIso = () => new Date().toISOString().slice(0, 10)
+
+/** Paths of the wizard's parameters whose values differ between two sets. */
+export function changedPaths(a: SimbookParams, b: SimbookParams): string[] {
+  const company = { name: '', concession: '' }
+  return PARAM_FIELDS.map(({ field }) => field.path).filter((path) => readField(a, company, path) !== readField(b, company, path))
+}
