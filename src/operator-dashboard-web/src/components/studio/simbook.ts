@@ -46,10 +46,21 @@ export interface SimsheetRecord {
   results: SimsheetResults
 }
 
+/** What the Nuevo Simbook wizard recorded about the book. Optional: older files have none. */
+export interface SimbookMeta {
+  description: string
+  company: { name: string; concession: string }
+  purpose: string | null
+  method: 'estandar'
+  /** How each wizard section was loaded: automatic (CTP/ARESEP), manual or copied. */
+  origins: Record<string, 'auto' | 'manual' | 'copy'>
+}
+
 export interface Simbook {
   format: typeof SIMBOOK_FORMAT
   version: number
   savedAt: string
+  meta: SimbookMeta | null
   draft: SimbookDraft | null
   simsheets: SimsheetRecord[]
 }
@@ -66,7 +77,8 @@ export function sameParams(a: SimbookParams, b: SimbookParams) {
 }
 
 /** Compares what would be saved, to tell whether the open Simbook has unsaved changes. */
-export const simbookKey = (draft: SimbookDraft | null, simsheets: SimsheetRecord[]) => stableJson({ draft, simsheets })
+export const simbookKey = (meta: SimbookMeta | null, draft: SimbookDraft | null, simsheets: SimsheetRecord[]) =>
+  stableJson({ meta, draft, simsheets })
 
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
@@ -77,11 +89,12 @@ function stableJson(value: unknown): string {
   return JSON.stringify(value)
 }
 
-export function serializeSimbook(draft: SimbookDraft | null, simsheets: SimsheetRecord[]): string {
+export function serializeSimbook(meta: SimbookMeta | null, draft: SimbookDraft | null, simsheets: SimsheetRecord[]): string {
   const book: Simbook = {
     format: SIMBOOK_FORMAT,
     version: SIMBOOK_VERSION,
     savedAt: new Date().toISOString(),
+    meta,
     draft,
     simsheets,
   }
@@ -142,6 +155,7 @@ export function parseSimbook(text: string, reference: SimbookParams): OpenedBook
     format: SIMBOOK_FORMAT,
     version: book.version,
     savedAt: typeof book.savedAt === 'string' ? book.savedAt : '',
+    meta: readMeta(book.meta),
     draft,
     simsheets,
     missing,
@@ -185,5 +199,18 @@ function readParams(value: unknown, reference: SimbookParams, where: string, mis
     demandScale: num(p.demandScale, reference.demandScale, 'demandScale'),
     costConfig: section(p.costConfig, reference.costConfig, 'costConfig'),
     schedules,
+  }
+}
+
+function readMeta(value: unknown): SimbookMeta | null {
+  if (!value || typeof value !== 'object') return null
+  const m = value as Partial<SimbookMeta>
+  const text = (v: unknown) => (typeof v === 'string' ? v : '')
+  return {
+    description: text(m.description),
+    company: { name: text(m.company?.name), concession: text(m.company?.concession) },
+    purpose: typeof m.purpose === 'string' ? m.purpose : null,
+    method: 'estandar',
+    origins: m.origins && typeof m.origins === 'object' ? m.origins : {},
   }
 }

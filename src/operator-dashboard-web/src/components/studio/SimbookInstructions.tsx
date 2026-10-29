@@ -12,8 +12,8 @@ export function SimbookInstructions() {
         <ol>
           <li>
             <strong>Revise los parámetros</strong> en las pestañas Rutas y Ramales, Despacho Horario, Nivel de Demanda y Costos.
-            Este Simbook empezó con valores de referencia públicos (ARESEP, CTP); reemplácelos por los de su empresa donde los
-            conozca.
+            Lo que cargó automáticamente del CTP y ARESEP es una referencia pública, y lo marcado como estimado conviene
+            reemplazarlo por los datos de su empresa.
           </li>
           <li>
             <strong>Ejecute la simulación</strong> con el botón Ejecutar simulación de la cinta. La primera ejecución crea la

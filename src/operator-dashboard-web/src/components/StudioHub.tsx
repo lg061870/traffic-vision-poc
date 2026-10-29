@@ -26,10 +26,12 @@ import {
   simbookKey,
   SimbookError,
   type SimbookDraft,
+  type SimbookMeta,
   type SimbookParams,
   type SimsheetRecord,
 } from './studio/simbook'
 import { SimbookInstructions } from './studio/SimbookInstructions'
+import { NewSimbookWizard, type NewSimbookResult } from './studio/wizard/NewSimbookWizard'
 import { canSaveInPlace, openSimbookFile, saveSimbookFile, type SimbookHandle } from './studio/simbookFile'
 import { StudioRibbon, type CostPreset, type ResultReport, type ScenarioPreset } from './studio/StudioRibbon'
 import { AsignacionView } from './studio/results/AsignacionView'
@@ -250,7 +252,9 @@ export function StudioHub(_props: StudioHubProps) {
   // The open Simbook: its name, where it lives (when the browser can save in place) and what was last saved.
   const [fileName, setFileName] = useState('Ejemplo_Coronado.simbook')
   const [fileHandle, setFileHandle] = useState<SimbookHandle | undefined>()
-  const [savedKey, setSavedKey] = useState(() => simbookKey(null, initialRuns.map(recordFromRun)))
+  const [savedKey, setSavedKey] = useState(() => simbookKey(null, null, initialRuns.map(recordFromRun)))
+  const [meta, setMeta] = useState<SimbookMeta | null>(null)
+  const [wizardOpen, setWizardOpen] = useState(false)
   // Values the open Simbook did not have, filled from the reference values until the user accepts them.
   const [missing, setMissing] = useState<string[]>([])
   const [activeScenarioDay, setActiveScenarioDay] = useState<StudioDay>('semana')
@@ -288,7 +292,7 @@ export function StudioHub(_props: StudioHubProps) {
   const stale = currentRun != null && !sameParams(currentRun.params, params)
   // Parameters not run yet are saved as the draft: all of them in a new Simbook, or edits since a Simsheet.
   const draft: SimbookDraft | null = !currentRun ? { basedOn: null, params } : stale ? { basedOn: currentRun.id, params } : null
-  const dirty = simbookKey(draft, runs.map(recordFromRun)) !== savedKey
+  const dirty = simbookKey(meta, draft, runs.map(recordFromRun)) !== savedKey
   const hourCost = costPerBusHour(costConfig)
 
   useEffect(() => {
@@ -314,8 +318,9 @@ export function StudioHub(_props: StudioHubProps) {
   const loadSimbook = (
     name: string,
     handle: SimbookHandle | undefined,
-    book: { draft: SimbookDraft | null; simsheets: SimsheetRecord[] },
+    book: { meta: SimbookMeta | null; draft: SimbookDraft | null; simsheets: SimsheetRecord[] },
     missingValues: string[] = [],
+    saved = true,
   ) => {
     const sheets = book.simsheets.map(runFromRecord)
     const last = sheets[sheets.length - 1]
@@ -325,7 +330,9 @@ export function StudioHub(_props: StudioHubProps) {
     setCurrentRunId(book.draft?.basedOn ?? last?.id ?? 0)
     setFileName(name)
     setFileHandle(handle)
-    setSavedKey(simbookKey(book.draft, book.simsheets))
+    // A book that was never saved counts as unsaved changes.
+    setSavedKey(saved ? simbookKey(book.meta, book.draft, book.simsheets) : '')
+    setMeta(book.meta)
     setMissing(missingValues)
     setShowMembershipView(false)
     setActiveTab('resultados')
@@ -333,11 +340,17 @@ export function StudioHub(_props: StudioHubProps) {
 
   const discardChanges = () => !dirty || window.confirm(`${fileName} tiene cambios sin guardar. ¿Descartarlos?`)
 
-  // A new Simbook is only an initial draft, from the public reference values, until its first run.
+  // Nuevo opens the wizard; the Simbook it creates is only an initial draft until its first run.
   const newSimbook = () => {
     if (!discardChanges()) return
-    loadSimbook('Sin título.simbook', undefined, { draft: { basedOn: null, params: defaultParams }, simsheets: [] })
-    setToast('Simbook nuevo: revise los parámetros y ejecute la simulación')
+    setWizardOpen(true)
+  }
+
+  const createSimbook = (r: NewSimbookResult) => {
+    setWizardOpen(false)
+    const bookMeta: SimbookMeta = { description: r.description, company: r.company, purpose: r.purpose, method: r.method, origins: r.origins }
+    loadSimbook(`${r.name}.simbook`, undefined, { meta: bookMeta, draft: { basedOn: null, params: r.params }, simsheets: [] }, r.missing, false)
+    setToast(`${r.name}.simbook creado como borrador · guárdelo con Guardar`)
   }
 
   const openSimbook = async () => {
@@ -357,11 +370,11 @@ export function StudioHub(_props: StudioHubProps) {
   const saveSimbook = async (saveAs: boolean) => {
     const sheets = runs.map(recordFromRun)
     try {
-      const saved = await saveSimbookFile(serializeSimbook(draft, sheets), fileName, saveAs ? undefined : fileHandle)
+      const saved = await saveSimbookFile(serializeSimbook(meta, draft, sheets), fileName, saveAs ? undefined : fileHandle)
       if (!saved) return
       setFileName(saved.name)
       setFileHandle(saved.handle)
-      setSavedKey(simbookKey(draft, sheets))
+      setSavedKey(simbookKey(meta, draft, sheets))
       setToast(saved.handle ? `Guardado en ${saved.name}` : `${saved.name} descargado (este navegador no guarda sobre el mismo archivo)`)
     } catch {
       setToast('No se pudo guardar el Simbook.')
@@ -1049,6 +1062,7 @@ export function StudioHub(_props: StudioHubProps) {
           7. BOTTOM STATUS BAR
           -------------------------------------------------------------------- */}
       {toast && <div className="sv-toast">{toast}</div>}
+      {wizardOpen && <NewSimbookWizard onCancel={() => setWizardOpen(false)} onCreate={createSimbook} />}
 
       <div className="fs-statusbar">
         <div className="fs-status-telemetry">
