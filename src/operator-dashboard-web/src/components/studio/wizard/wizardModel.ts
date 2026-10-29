@@ -8,8 +8,8 @@ export type { FieldSource }
 
 export type SectionId = 'empresa' | 'rutas' | 'flota' | 'frecuencias' | 'costos' | 'demanda'
 
-/** How the user chose to load a section. */
-export type SectionOrigin = 'auto' | 'manual' | 'copy'
+/** How the user chose to load a section: saved company parameters, official data, by hand or copied. */
+export type SectionOrigin = 'saved' | 'auto' | 'manual' | 'copy'
 
 export interface FieldDef {
   /** Path in the wizard values: `company.*` for the Simbook's company, otherwise a SimbookParams path. */
@@ -50,7 +50,7 @@ export const SECTIONS: SectionDef[] = [
     id: 'empresa',
     title: 'Empresa',
     description: 'Quién opera y con qué concesión.',
-    origins: ['auto', 'manual', 'copy'],
+    origins: ['saved', 'auto', 'manual', 'copy'],
     fields: [
       { path: 'company.name', label: 'Razón social', kind: 'text', auto: 'publica' },
       { path: 'company.concession', label: 'Concesión', kind: 'text', auto: 'publica' },
@@ -69,7 +69,7 @@ export const SECTIONS: SectionDef[] = [
     id: 'flota',
     title: 'Flota',
     description: 'Cuántos buses tiene la concesión.',
-    origins: ['auto', 'manual', 'copy'],
+    origins: ['saved', 'auto', 'manual', 'copy'],
     fields: [
       { path: 'fleet', label: 'Flota autorizada', unit: 'buses', kind: 'number', auto: 'publica', reference: 'CTP-DT-DAC-INF-0557-2023', date: '2023' },
     ],
@@ -79,7 +79,7 @@ export const SECTIONS: SectionDef[] = [
     id: 'frecuencias',
     title: 'Frecuencias, horarios y turnos',
     description: 'Primer y último despacho, intervalos y cuánta flota sale en cada franja, por tipo de día.',
-    origins: ['auto', 'manual', 'copy'],
+    origins: ['saved', 'auto', 'manual', 'copy'],
     autoNote: 'BusLab todavía no tiene las frecuencias autorizadas por el CTP: estos valores son estimaciones del equipo.',
     fields: perDay((day, group) => [
       { path: `schedules.${day}.firstDeparture`, label: 'Primer despacho', kind: 'time', auto: 'estimado', group },
@@ -95,7 +95,7 @@ export const SECTIONS: SectionDef[] = [
     id: 'costos',
     title: 'Costos, tarifas e ingresos',
     description: 'Lo que cuesta una hora de bus en servicio. Las tarifas son las del pliego ARESEP vigente.',
-    origins: ['auto', 'manual', 'copy'],
+    origins: ['saved', 'auto', 'manual', 'copy'],
     autoNote: 'Modelo de costos de ARESEP con valores estimados por el equipo: revíselos con los costos reales de su empresa.',
     fields: [
       { path: 'costConfig.dieselPricePerLiter', label: 'Precio diésel', unit: '₡/L', kind: 'number', auto: 'estimado', group: 'Combustible y energía' },
@@ -117,7 +117,7 @@ export const SECTIONS: SectionDef[] = [
     id: 'demanda',
     title: 'Demanda y variación temporal',
     description: 'Cuántos pasajeros viajan y cómo se reparten en el día.',
-    origins: ['auto', 'manual', 'copy'],
+    origins: ['saved', 'auto', 'manual', 'copy'],
     autoNote: 'Solo los pasajeros de lunes a viernes son un dato oficial (ARESEP RE-0025-IT-2024); lo demás son estimaciones del equipo.',
     fields: [
       { path: 'demandScale', label: 'Escala de demanda', unit: '%', kind: 'percent', auto: 'estimado' },

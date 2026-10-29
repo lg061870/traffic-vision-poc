@@ -48,6 +48,9 @@ export interface StudioRibbonProps {
   onOpen: () => void
   onSave: () => void
   onSaveAs: () => void
+  onSaveDefaults: () => void
+  onRestoreDefaults: () => void
+  onClearDefaults: () => void
   notify: (message: string) => void
 }
 
@@ -199,6 +202,20 @@ export function StudioRibbon(p: StudioRibbonProps) {
               items={[
                 { icon: 'import', label: 'Importar', onClick: () => p.notify('Importar escenario .json (maqueta)') },
                 { icon: 'export', label: 'Exportar JSON', onClick: () => p.notify('Exportar escenario .json (maqueta)') },
+              ]}
+            />
+          </Group>
+          <Group label="Mis parámetros">
+            <BigButton
+              icon="user"
+              label={<>Guardar como<br />predeterminados</>}
+              title="Usar los parámetros en pantalla para empezar nuevos Simbooks (solo en este navegador)"
+              onClick={p.onSaveDefaults}
+            />
+            <SmallStack
+              items={[
+                { icon: 'import', label: 'Restaurar desde un Simbook', title: 'Tomar mis parámetros de un Simbook, sin modificarlo', onClick: p.onRestoreDefaults },
+                { icon: 'trash', label: 'Borrar', title: 'Borrar mis parámetros guardados de este navegador', onClick: p.onClearDefaults },
               ]}
             />
           </Group>

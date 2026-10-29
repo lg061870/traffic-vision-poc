@@ -70,8 +70,8 @@ export interface SimbookMeta {
   company: { name: string; concession: string }
   purpose: string | null
   method: 'estandar'
-  /** How each wizard section was loaded: automatic (CTP/ARESEP), manual or copied. */
-  origins: Record<string, 'auto' | 'manual' | 'copy'>
+  /** How each wizard section was loaded: saved company parameters, automatic (CTP/ARESEP), manual or copied. */
+  origins: Record<string, 'saved' | 'auto' | 'manual' | 'copy'>
 }
 
 export interface Simbook {

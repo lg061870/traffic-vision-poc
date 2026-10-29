@@ -74,7 +74,7 @@ Un campo desconocido nunca debe convertirse silenciosamente en un valor supuesto
 
 ## 5. Parámetros guardados: persistencia y recuperación
 
-- Guardarlos en almacenamiento local de la aplicación (por ejemplo IndexedDB), con versión de esquema y fecha de actualización. **No son un servidor central ni una dependencia externa del Simbook**.
+- Guardarlos en almacenamiento local de la aplicación (hoy `localStorage` del navegador, clave `buslab.companyParams`; son pocos KB), con versión de esquema y fecha de actualización. Al leerlos se validan igual que un Simbook; si están dañados se ignoran. **No son un servidor central ni una dependencia externa del Simbook**.
 - Como el almacenamiento del navegador se puede borrar o cambiar de dispositivo, permitir **Restaurar mis parámetros desde un Simbook**. El usuario elige la línea base o una Simsheet; la operación sustituye los parámetros predeterminados solo tras confirmación, sin modificar el Simbook fuente.
 - Ofrecer **Actualizar mis parámetros predeterminados con los valores de este borrador/Simsheet** como acción explícita, nunca automática.
 - Una empresa con varias rutas guarda todas las rutas pertinentes; la simulación puede limitar el alcance a una o varias.

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { defaultParams } from '../mockRun'
 import { parseSimbook, SimbookError, type Provenance, type ProvenanceEntry, type SimbookParams } from '../simbook'
 import { openSimbookFile } from '../simbookFile'
+import { SHARED_COMPUTER_WARNING, type SavedCompanyParams } from '../companyParams'
 import { routes } from '../studioModel'
 import {
   autoEntry,
@@ -35,9 +36,13 @@ export interface NewSimbookResult {
   provenance: Provenance
   /** Parameter paths left empty. */
   missing: string[]
+  /** Also keep these values as "mis parámetros guardados" for new Simbooks. */
+  saveAsDefaults: boolean
 }
 
 interface Props {
+  /** The company's saved parameters, offered first when there are any. */
+  saved: SavedCompanyParams | null
   onCancel: () => void
   onCreate: (result: NewSimbookResult) => void
 }
@@ -45,6 +50,7 @@ interface Props {
 const STEPS = ['Origen de los datos', 'Revisar parámetros', 'Propósito y método', 'Crear']
 
 const ORIGIN_LABEL: Record<SectionOrigin, string> = {
+  saved: 'Mis parámetros guardados',
   auto: 'Automático (CTP / ARESEP)',
   manual: 'Manual',
   copy: 'Copiar de otro Simbook',
@@ -83,10 +89,16 @@ interface CopySource {
   company: Company | null
 }
 
-function initialFields(section: SectionId, origin: SectionOrigin, copy: CopySource | null): Record<string, FieldState> {
+function initialFields(section: SectionId, origin: SectionOrigin, copy: CopySource | null, saved: SavedCompanyParams | null): Record<string, FieldState> {
   const out: Record<string, FieldState> = {}
   for (const field of SECTIONS.find((s) => s.id === section)!.fields) {
     if (origin === 'manual') out[field.path] = { value: null, source: 'vacio' }
+    else if (origin === 'saved' && saved) {
+      // Saved values keep the source recorded with them; one saved while still empty stays empty.
+      const entry = saved.provenance[field.path] ?? { source: 'copia', reference: 'Mis parámetros guardados' }
+      const value = entry.source === 'vacio' ? null : readField(saved.params, saved.company, field.path)
+      out[field.path] = value === null || value === '' ? { value: null, source: 'vacio' } : { value, source: entry.source, entry }
+    }
     else if (origin === 'copy' && copy) {
       const value = readField(copy.params, copy.company ?? { name: '', concession: '' }, field.path)
       // A copied value keeps the source the other Simbook recorded; without one it is just "copied".
@@ -97,15 +109,22 @@ function initialFields(section: SectionId, origin: SectionOrigin, copy: CopySour
   return out
 }
 
-export function NewSimbookWizard({ onCancel, onCreate }: Props) {
+// With saved parameters every section starts from them; otherwise from the official data.
+const startOrigin = (s: (typeof SECTIONS)[number], saved: SavedCompanyParams | null): SectionOrigin =>
+  saved && s.origins.includes('saved') ? 'saved' : 'auto'
+
+export function NewSimbookWizard({ saved, onCancel, onCreate }: Props) {
   const [step, setStep] = useState(0)
   const [origins, setOrigins] = useState<Record<SectionId, SectionOrigin>>(
-    () => Object.fromEntries(SECTIONS.map((s) => [s.id, 'auto'])) as Record<SectionId, SectionOrigin>,
+    () => Object.fromEntries(SECTIONS.map((s) => [s.id, startOrigin(s, saved)])) as Record<SectionId, SectionOrigin>,
   )
   const [copy, setCopy] = useState<CopySource | null>(null)
   const [fields, setFields] = useState<Record<string, FieldState>>(() =>
-    Object.assign({}, ...SECTIONS.map((s) => initialFields(s.id, 'auto', null))),
+    Object.assign({}, ...SECTIONS.map((s) => initialFields(s.id, startOrigin(s, saved), null, saved))),
   )
+  // Offered checked the first time, so a company's first Simbook also sets its defaults; afterwards
+  // replacing them is an explicit choice.
+  const [saveAsDefaults, setSaveAsDefaults] = useState(saved === null)
   const [sectionIndex, setSectionIndex] = useState(0)
   const [purpose, setPurpose] = useState<SimbookPurpose | null>(null)
   const [name, setName] = useState('Mi_escenario')
@@ -114,7 +133,7 @@ export function NewSimbookWizard({ onCancel, onCreate }: Props) {
 
   const setOrigin = (section: SectionId, origin: SectionOrigin, source = copy) => {
     setOrigins((prev) => ({ ...prev, [section]: origin }))
-    setFields((prev) => ({ ...prev, ...initialFields(section, origin, source) }))
+    setFields((prev) => ({ ...prev, ...initialFields(section, origin, source, saved) }))
   }
   const setAll = (origin: SectionOrigin) => {
     for (const s of SECTIONS) if (s.origins.includes(origin)) setOrigin(s.id, origin)
@@ -177,7 +196,18 @@ export function NewSimbookWizard({ onCancel, onCreate }: Props) {
     }
     const clean = name.trim().replace(/[\\/:*?"<>|]+/g, '_') || 'Mi_escenario'
     const provenance: Provenance = Object.fromEntries(ALL_FIELDS.filter((f) => !f.path.startsWith('company.')).map((f) => [f.path, entryFor(f)]))
-    onCreate({ name: clean, description: description.trim(), company, purpose, method: 'estandar', origins, params, provenance, missing: emptyFields.map((f) => f.path) })
+    onCreate({
+      name: clean,
+      description: description.trim(),
+      company,
+      purpose,
+      method: 'estandar',
+      origins,
+      params,
+      provenance,
+      missing: emptyFields.map((f) => f.path),
+      saveAsDefaults,
+    })
   }
 
   const counts = (section: SectionId) => {
@@ -231,7 +261,21 @@ export function NewSimbookWizard({ onCancel, onCreate }: Props) {
                 ruta 142, marcados como referencia pública; lo que no está en ningún documento oficial se marca como estimado.
                 <strong> Manual</strong> deja los campos vacíos para que usted los llene.
               </p>
+              {saved && (
+                <div className="wz-saved">
+                  <strong>Mis parámetros guardados</strong>
+                  {saved.company.name && <> · {saved.company.name}</>} · actualizados{' '}
+                  {saved.updatedAt ? new Date(saved.updatedAt).toLocaleDateString('es-CR') : '—'}
+                  {saved.origin && <> · desde {saved.origin}</>}
+                  <div className="wz-muted">
+                    Se creará una copia independiente. Los cambios posteriores en sus parámetros guardados no modificarán este Simbook.
+                  </div>
+                </div>
+              )}
               <div className="wz-quick">
+                {saved && (
+                  <button type="button" onClick={() => setAll('saved')}>Todo de mis parámetros</button>
+                )}
                 <button type="button" onClick={() => setAll('auto')}>Todo automático</button>
                 <button type="button" onClick={() => setAll('manual')}>Todo manual</button>
                 {copy && <span className="wz-copy-name">Copiando de {copy.name}</span>}
@@ -246,7 +290,7 @@ export function NewSimbookWizard({ onCancel, onCreate }: Props) {
                       </td>
                       <td>
                         <div className="wz-seg" role="radiogroup" aria-label={s.title}>
-                          {(['auto', 'manual', 'copy'] as SectionOrigin[]).map((o) => (
+                          {((saved ? ['saved', 'auto', 'manual', 'copy'] : ['auto', 'manual', 'copy']) as SectionOrigin[]).map((o) => (
                             <button
                               key={o}
                               type="button"
@@ -396,6 +440,14 @@ export function NewSimbookWizard({ onCancel, onCreate }: Props) {
                   : 'Todos los campos tienen valor.'}{' '}
                 El Simbook se crea como borrador, sin Simsheets; guárdelo con Guardar.
               </p>
+              <label className="wz-check">
+                <input type="checkbox" checked={saveAsDefaults} onChange={(e) => setSaveAsDefaults(e.target.checked)} />
+                <span>
+                  {saved ? 'Reemplazar mis parámetros guardados' : 'Guardar como mis parámetros predeterminados'} con estos valores para
+                  nuevos Simbooks.
+                  <span className="wz-muted"> {SHARED_COMPUTER_WARNING}</span>
+                </span>
+              </label>
             </>
           )}
         </div>

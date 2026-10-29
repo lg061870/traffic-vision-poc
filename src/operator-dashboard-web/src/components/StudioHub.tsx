@@ -25,6 +25,7 @@ import {
   serializeSimbook,
   simbookKey,
   SimbookError,
+  type OpenedBook,
   type SimbookDraft,
   type SimbookMeta,
   type Provenance,
@@ -34,6 +35,14 @@ import {
 import { autoEntryFor, deriveProvenance, fieldLabel, readField, todayIso } from './studio/wizard/wizardModel'
 import { SimbookInstructions } from './studio/SimbookInstructions'
 import { NewSimbookWizard, type NewSimbookResult } from './studio/wizard/NewSimbookWizard'
+import { RestoreParamsDialog, type RestoreChoice } from './studio/wizard/RestoreParamsDialog'
+import {
+  clearCompanyParams,
+  loadCompanyParams,
+  saveCompanyParams,
+  SHARED_COMPUTER_WARNING,
+  type SavedCompanyParams,
+} from './studio/companyParams'
 import { canSaveInPlace, openSimbookFile, saveSimbookFile, type SimbookHandle } from './studio/simbookFile'
 import { StudioRibbon, type CostPreset, type ResultReport, type ScenarioPreset } from './studio/StudioRibbon'
 import { AsignacionView } from './studio/results/AsignacionView'
@@ -257,6 +266,9 @@ export function StudioHub(_props: StudioHubProps) {
   const [savedKey, setSavedKey] = useState(() => simbookKey(null, null, initialRuns.map(recordFromRun)))
   const [meta, setMeta] = useState<SimbookMeta | null>(null)
   const [wizardOpen, setWizardOpen] = useState(false)
+  // "Mis parámetros guardados", kept only in this browser, and the Simbook being restored from.
+  const [savedParams, setSavedParams] = useState<SavedCompanyParams | null>(() => loadCompanyParams(defaultParams))
+  const [restoring, setRestoring] = useState<{ fileName: string; book: OpenedBook } | null>(null)
   // Paths of values the open Simbook did not have, filled from the reference values until the user
   // accepts them or enters their own.
   const [missingPaths, setMissingPaths] = useState<string[]>([])
@@ -368,7 +380,56 @@ export function StudioHub(_props: StudioHubProps) {
     const bookMeta: SimbookMeta = { description: r.description, company: r.company, purpose: r.purpose, method: r.method, origins: r.origins }
     const newDraft = { basedOn: null, params: r.params, provenance: r.provenance }
     loadSimbook(`${r.name}.simbook`, undefined, { meta: bookMeta, draft: newDraft, simsheets: [] }, r.missing, false)
-    setToast(`${r.name}.simbook creado como borrador · guárdelo con Guardar`)
+    const kept = r.saveAsDefaults && storeDefaults({ company: r.company, params: r.params, provenance: r.provenance, origin: `asistente (${r.name}.simbook)` })
+    setToast(`${r.name}.simbook creado como borrador${kept ? ' · parámetros guardados en este navegador' : ''} · guárdelo con Guardar`)
+  }
+
+  const storeDefaults = (entry: Omit<SavedCompanyParams, 'schemaVersion' | 'updatedAt'>) => {
+    const stored = saveCompanyParams(entry)
+    if (!stored) setToast('Este navegador no permite guardar datos: sus parámetros no se guardaron.')
+    else setSavedParams(stored)
+    return stored !== null
+  }
+
+  // Explicit, never automatic: the parameters on screen become the defaults for new Simbooks.
+  const saveDefaults = () => {
+    const what = currentRun && !stale ? `${currentRun.label} de ${fileName}` : `borrador de ${fileName}`
+    const question = `${savedParams ? '¿Reemplazar sus parámetros guardados' : '¿Guardar como sus parámetros predeterminados'} con los valores de ${what}?\n\n${SHARED_COMPUTER_WARNING}`
+    if (!window.confirm(question)) return
+    if (storeDefaults({ company: meta?.company ?? { name: '', concession: '' }, params, provenance, origin: what })) {
+      setToast(`Parámetros guardados en este navegador (${what})`)
+    }
+  }
+
+  const restoreDefaults = async () => {
+    try {
+      const opened = await openSimbookFile()
+      if (!opened) return
+      setRestoring({ fileName: opened.name, book: parseSimbook(opened.text, defaultParams) })
+    } catch (error) {
+      setToast(error instanceof SimbookError ? error.message : 'No se pudo abrir el archivo.')
+    }
+  }
+
+  const finishRestore = (choice: RestoreChoice) => {
+    if (!restoring) return
+    const origin = `${choice.label} de ${restoring.fileName}`
+    const company = restoring.book.meta?.company ?? { name: '', concession: '' }
+    setRestoring(null)
+    if (storeDefaults({ company, params: choice.params, provenance: choice.provenance, origin })) {
+      setToast(`Parámetros restaurados desde ${origin}`)
+    }
+  }
+
+  const clearDefaults = () => {
+    if (!savedParams) {
+      setToast('No hay parámetros guardados en este navegador.')
+      return
+    }
+    if (!window.confirm('¿Borrar sus parámetros guardados de este navegador? Sus Simbooks no cambian.')) return
+    clearCompanyParams()
+    setSavedParams(null)
+    setToast('Parámetros guardados borrados de este navegador')
   }
 
   const openSimbook = async () => {
@@ -782,6 +843,9 @@ export function StudioHub(_props: StudioHubProps) {
           onOpen={() => void openSimbook()}
           onSave={() => void saveSimbook(false)}
           onSaveAs={() => void saveSimbook(true)}
+          onSaveDefaults={saveDefaults}
+          onRestoreDefaults={() => void restoreDefaults()}
+          onClearDefaults={clearDefaults}
           notify={setToast}
         />
       </div>
@@ -1099,7 +1163,16 @@ export function StudioHub(_props: StudioHubProps) {
           7. BOTTOM STATUS BAR
           -------------------------------------------------------------------- */}
       {toast && <div className="sv-toast">{toast}</div>}
-      {wizardOpen && <NewSimbookWizard onCancel={() => setWizardOpen(false)} onCreate={createSimbook} />}
+      {wizardOpen && <NewSimbookWizard saved={savedParams} onCancel={() => setWizardOpen(false)} onCreate={createSimbook} />}
+      {restoring && (
+        <RestoreParamsDialog
+          fileName={restoring.fileName}
+          book={restoring.book}
+          replacing={savedParams !== null}
+          onCancel={() => setRestoring(null)}
+          onRestore={finishRestore}
+        />
+      )}
 
       <div className="fs-statusbar">
         <div className="fs-status-telemetry">
