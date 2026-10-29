@@ -1,6 +1,6 @@
 # BusLab: asistente Nuevo Simbook y parámetros guardados
 
-**Fecha:** 28 de octubre de 2026 · **Estado:** propuesta de diseño, pendiente de implementación  
+**Fecha:** 28 de octubre de 2026 · **Actualizado:** 29 de octubre de 2026 (sección 4: origen de los datos) · **Estado:** propuesta de diseño, pendiente de implementación  
 **Documento relacionado:** [Simbook: archivos de escenario](./simbook-archivos-de-escenario.md)
 
 ## 1. Objetivo y principios
@@ -50,9 +50,26 @@ Solicitar nombre y descripción opcional; mostrar resumen del origen, completitu
 
 Si no hay parámetros guardados, abrir un asistente con seis secciones: (1) empresa; (2) rutas/ramales/paradas/distancias; (3) flota/capacidades/consumos; (4) frecuencias/horarios/turnos; (5) costos, tarifas e ingresos; (6) demanda y variación temporal.
 
+### 4.1 Primer paso: origen de los datos
+
+Antes de las seis secciones, el asistente pregunta **«¿Cómo quiere cargar los parámetros?»**. La carga automática de datos oficiales es un paso que el usuario elige, nunca algo que la aplicación hace por su cuenta.
+
+| Opción | Qué hace |
+|---|---|
+| **Automático: datos oficiales CTP / ARESEP** | Precarga lo que publican el CTP y ARESEP para la concesión. Cada valor queda marcado como **referencia pública (CTP/ARESEP)**. |
+| **Manual** | El usuario define todo, sección por sección, desde campos vacíos. |
+| **Copiar de otro Simbook** | Abre un Simbook y toma sus parámetros (línea base o una Simsheet). |
+
+- **Se elige por sección, no todo o nada.** El caso común es usar los datos oficiales para rutas y tarifas, y los propios de la empresa para costos. El paso muestra las seis secciones con la opción elegida para cada una; el usuario puede cambiar cualquiera.
+- **Lo que cubren los datos oficiales:** rutas, ramales y paradas; flota y frecuencias autorizadas; tarifas ARESEP. Los costos de operación pueden salir del modelo de costos publicado por ARESEP, pero solo como **estimación etiquetada**. Los costos reales y la demanda real de la empresa no están en ningún documento público: aun en modo automático, esas secciones se marcan **«estimado, revise»**.
+- **Fuente de los datos oficiales:** por ahora, los datos de la ruta 142 incluidos en BusLab (`src/operator-dashboard-web/src/config/ctpRoutesData.ts` y los valores ARESEP de `docs/supuestos-dashboard-operador.md`). Importar el documento CTP propio del operador (por ejemplo su matriz de concesión) queda como mejora posterior; requiere definir el formato de ese documento.
+- Después de este paso, las seis secciones se recorren una por una, precargadas o vacías según la opción. Si el usuario reemplaza un valor precargado, su fuente cambia de «referencia pública» a «verificado por operador».
+
+### 4.2 Las seis secciones
+
 Para cada campo registrar, cuando corresponda, **valor, unidad, fuente** (verificado por operador, estimado por operador o referencia pública) y fecha de referencia. Validar consistencia y dependencias; permitir guardar avance y volver. Al terminar, ofrecer «Guardar como mis parámetros predeterminados para nuevos Simbooks».
 
-Un campo desconocido nunca debe convertirse silenciosamente en un valor supuesto. Se puede usar una referencia pública etiquetada como tal, si el usuario la acepta.
+Un campo desconocido nunca debe convertirse silenciosamente en un valor supuesto. Se puede usar una referencia pública etiquetada como tal, si el usuario la acepta: elegir **Automático** en el paso 4.1 es esa aceptación.
 
 ## 5. Parámetros guardados: persistencia y recuperación
 
@@ -85,6 +102,8 @@ Las diferencias se **calculan** entre los parámetros completos de cada Simsheet
 - Una corrida Monte Carlo de 10 000 iteraciones crea **una** Simsheet.
 - Si faltan valores requeridos, ejecutar presenta validación específica y navega a los campos; no sustituye datos privados por valores centrales sin avisar.
 - Restaurar parámetros desde un Simbook pide confirmación y no modifica el origen.
+- En la primera configuración, elegir **Automático** para rutas y tarifas y **Manual** para costos deja las rutas y tarifas marcadas como referencia pública y los costos vacíos hasta que el usuario los llene.
+- Con **Automático** en todas las secciones, costos y demanda quedan marcados «estimado, revise»; ninguna sección aparece como dato verificado del operador sin que él lo haya confirmado.
 - Guardar, abrir, guardar como y recuperarse de cierres inesperados deben diferenciar datos persistidos de cambios sin guardar.
 
 ## 8. Alcance de implementación
