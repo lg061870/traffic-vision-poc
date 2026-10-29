@@ -18,8 +18,18 @@ import { RutasView } from './studio/RutasView'
 import { costPerBusHour, type StudioDay, type StudioTab } from './studio/studioModel'
 import { DemandaParamsView } from './studio/DemandaParamsView'
 import { DespachoParamsView } from './studio/DespachoParamsView'
-import { defaultParams, initialRuns, recordFromRun, runFromRecord, runOutput, type SimRun } from './studio/mockRun'
-import { parseSimbook, sameParams, serializeSimbook, simbookKey, SimbookError, type SimbookParams } from './studio/simbook'
+import { defaultParams, executeRun, initialRuns, recordFromRun, runFromRecord, runOutput, type SimRun } from './studio/mockRun'
+import {
+  parseSimbook,
+  sameParams,
+  serializeSimbook,
+  simbookKey,
+  SimbookError,
+  type SimbookDraft,
+  type SimbookParams,
+  type SimsheetRecord,
+} from './studio/simbook'
+import { SimbookInstructions } from './studio/SimbookInstructions'
 import { canSaveInPlace, openSimbookFile, saveSimbookFile, type SimbookHandle } from './studio/simbookFile'
 import { StudioRibbon, type CostPreset, type ResultReport, type ScenarioPreset } from './studio/StudioRibbon'
 import { AsignacionView } from './studio/results/AsignacionView'
@@ -240,7 +250,9 @@ export function StudioHub(_props: StudioHubProps) {
   // The open Simbook: its name, where it lives (when the browser can save in place) and what was last saved.
   const [fileName, setFileName] = useState('Ejemplo_Coronado.simbook')
   const [fileHandle, setFileHandle] = useState<SimbookHandle | undefined>()
-  const [savedKey, setSavedKey] = useState(() => simbookKey(initialRuns[initialRuns.length - 1].params, initialRuns.map(recordFromRun)))
+  const [savedKey, setSavedKey] = useState(() => simbookKey(null, initialRuns.map(recordFromRun)))
+  // Values the open Simbook did not have, filled from the reference values until the user accepts them.
+  const [missing, setMissing] = useState<string[]>([])
   const [activeScenarioDay, setActiveScenarioDay] = useState<StudioDay>('semana')
   const [showMembershipView, setShowMembershipView] = useState<boolean>(false)
   const [showBrochureView, setShowBrochureView] = useState<boolean>(() => {
@@ -268,12 +280,15 @@ export function StudioHub(_props: StudioHubProps) {
     'Ramal Patio de Agua',
   ])
 
-  const currentRun = runs.find((r) => r.id === currentRunId) ?? runs[runs.length - 1]
-  const output = runOutput(currentRun)
+  // A new Simbook has no Simsheets until its first run.
+  const currentRun: SimRun | undefined = runs.find((r) => r.id === currentRunId) ?? runs[runs.length - 1]
+  const output = currentRun ? runOutput(currentRun) : null
   const params: SimbookParams = { day: activeScenarioDay, fleet, demandScale, costConfig, schedules }
   // The results are out of date when the parameters on screen are not the ones this Simsheet ran with.
-  const stale = !sameParams(currentRun.params, params)
-  const dirty = simbookKey(params, runs.map(recordFromRun)) !== savedKey
+  const stale = currentRun != null && !sameParams(currentRun.params, params)
+  // Parameters not run yet are saved as the draft: all of them in a new Simbook, or edits since a Simsheet.
+  const draft: SimbookDraft | null = !currentRun ? { basedOn: null, params } : stale ? { basedOn: currentRun.id, params } : null
+  const dirty = simbookKey(draft, runs.map(recordFromRun)) !== savedKey
   const hourCost = costPerBusHour(costConfig)
 
   useEffect(() => {
@@ -296,26 +311,33 @@ export function StudioHub(_props: StudioHubProps) {
     setSchedules(p.schedules)
   }
 
-  const loadSimbook = (name: string, handle: SimbookHandle | undefined, p: SimbookParams, sheets: SimRun[]) => {
-    loadParams(p)
+  const loadSimbook = (
+    name: string,
+    handle: SimbookHandle | undefined,
+    book: { draft: SimbookDraft | null; simsheets: SimsheetRecord[] },
+    missingValues: string[] = [],
+  ) => {
+    const sheets = book.simsheets.map(runFromRecord)
+    const last = sheets[sheets.length - 1]
+    // The draft's parameters when there is one, otherwise those of the last Simsheet.
+    loadParams(book.draft?.params ?? last.params)
     setRuns(sheets)
-    setCurrentRunId(sheets[sheets.length - 1].id)
+    setCurrentRunId(book.draft?.basedOn ?? last?.id ?? 0)
     setFileName(name)
     setFileHandle(handle)
-    setSavedKey(simbookKey(p, sheets.map(recordFromRun)))
+    setSavedKey(simbookKey(book.draft, book.simsheets))
+    setMissing(missingValues)
     setShowMembershipView(false)
     setActiveTab('resultados')
   }
 
   const discardChanges = () => !dirty || window.confirm(`${fileName} tiene cambios sin guardar. ¿Descartarlos?`)
 
-  // A new Simbook starts from the official parameters, already run once as its Simsheet 1.
+  // A new Simbook is only an initial draft, from the public reference values, until its first run.
   const newSimbook = () => {
     if (!discardChanges()) return
-    loadSimbook('Sin título.simbook', undefined, defaultParams, [
-      runFromRecord({ id: 1, label: 'Simsheet 1', ranAt: new Date().toISOString(), params: defaultParams }),
-    ])
-    setToast('Simbook nuevo con los parámetros oficiales')
+    loadSimbook('Sin título.simbook', undefined, { draft: { basedOn: null, params: defaultParams }, simsheets: [] })
+    setToast('Simbook nuevo: revise los parámetros y ejecute la simulación')
   }
 
   const openSimbook = async () => {
@@ -324,8 +346,9 @@ export function StudioHub(_props: StudioHubProps) {
       const opened = await openSimbookFile()
       if (!opened) return
       const book = parseSimbook(opened.text, defaultParams)
-      loadSimbook(opened.name, opened.handle, book.params, book.simsheets.map(runFromRecord))
-      setToast(`${opened.name} abierto · ${book.simsheets.length} Simsheet${book.simsheets.length === 1 ? '' : 's'}`)
+      loadSimbook(opened.name, opened.handle, book, book.missing)
+      const count = book.simsheets.length
+      setToast(`${opened.name} abierto · ${count === 0 ? 'sin Simsheets' : `${count} Simsheet${count === 1 ? '' : 's'}`}`)
     } catch (error) {
       setToast(error instanceof SimbookError ? error.message : 'No se pudo abrir el archivo.')
     }
@@ -334,11 +357,11 @@ export function StudioHub(_props: StudioHubProps) {
   const saveSimbook = async (saveAs: boolean) => {
     const sheets = runs.map(recordFromRun)
     try {
-      const saved = await saveSimbookFile(serializeSimbook(params, sheets), fileName, saveAs ? undefined : fileHandle)
+      const saved = await saveSimbookFile(serializeSimbook(draft, sheets), fileName, saveAs ? undefined : fileHandle)
       if (!saved) return
       setFileName(saved.name)
       setFileHandle(saved.handle)
-      setSavedKey(simbookKey(params, sheets))
+      setSavedKey(simbookKey(draft, sheets))
       setToast(saved.handle ? `Guardado en ${saved.name}` : `${saved.name} descargado (este navegador no guarda sobre el mismo archivo)`)
     } catch {
       setToast('No se pudo guardar el Simbook.')
@@ -389,8 +412,13 @@ export function StudioHub(_props: StudioHubProps) {
   }
 
   const runSimulation = () => {
-    const id = Math.max(...runs.map((r) => r.id)) + 1
-    const run = runFromRecord({ id, label: `Simsheet ${id}`, ranAt: new Date().toISOString(), params })
+    if (missing.length > 0) {
+      setActiveTab('resultados')
+      setToast('Faltan valores en este Simbook: revíselos antes de ejecutar.')
+      return
+    }
+    const id = Math.max(0, ...runs.map((r) => r.id)) + 1
+    const run = executeRun(id, params, ACCOUNT.name)
     setRuns((prev) => [...prev, run])
     setCurrentRunId(id)
     setActiveTab('resultados')
@@ -428,6 +456,25 @@ export function StudioHub(_props: StudioHubProps) {
       setRouteChips((prev) => [...prev, nextRoute])
     }
   }
+
+  // Values the open Simbook did not have; shown above the results until the user accepts them.
+  const missingBanner = missing.length > 0 && (
+    <div className="sv-stale sv-missing">
+      <div>
+        ⚠ Este Simbook no traía {missing.length === 1 ? 'un valor' : `${missing.length} valores`}. Se muestran los valores
+        de referencia públicos (ARESEP, CTP) en su lugar. Acéptelos para poder ejecutar; después puede cambiar cualquiera.
+        <ul>
+          {missing.slice(0, 6).map((m) => (
+            <li key={m}>{m}</li>
+          ))}
+          {missing.length > 6 && <li>y {missing.length - 6} más</li>}
+        </ul>
+      </div>
+      <button type="button" className="sv-btn primary" onClick={() => setMissing([])}>
+        Usar valores de referencia
+      </button>
+    </div>
+  )
 
   if (showBrochureView) {
     return <BrochureView onBackToStudio={() => setShowBrochureView(false)} />
@@ -796,8 +843,15 @@ export function StudioHub(_props: StudioHubProps) {
             ))}
           {activeTab === 'costos' && <CostosView costConfig={costConfig} onChange={changeCost} />}
           {activeTab === 'ayuda' && <AyudaView />}
-          {activeTab === 'resultados' && (
+          {activeTab === 'resultados' && !currentRun && (
             <div className="sv-results">
+              {missingBanner}
+              <SimbookInstructions />
+            </div>
+          )}
+          {activeTab === 'resultados' && currentRun && output && (
+            <div className="sv-results">
+              {missingBanner}
               {stale && (
                 <div className="sv-stale">
                   <span>
@@ -998,10 +1052,16 @@ export function StudioHub(_props: StudioHubProps) {
 
       <div className="fs-statusbar">
         <div className="fs-status-telemetry">
-          <span style={{ color: stale ? '#f59e0b' : '#10b981' }}>●</span>
+          <span style={{ color: stale || !output ? '#f59e0b' : '#10b981' }}>●</span>
           <span>
-            {currentRun.label} · {output.totals.trips.toLocaleString('es-CR')} viajes simulados ·{' '}
-            {stale ? 'parámetros cambiados, ejecute de nuevo' : 'resultados al día'}
+            {currentRun && output ? (
+              <>
+                {currentRun.label} · {output.totals.trips.toLocaleString('es-CR')} viajes simulados ·{' '}
+                {stale ? 'parámetros cambiados, ejecute de nuevo' : 'resultados al día'}
+              </>
+            ) : (
+              'Borrador inicial · todavía no hay Simsheets'
+            )}
           </span>
         </div>
 

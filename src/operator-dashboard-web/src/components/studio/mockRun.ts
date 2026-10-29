@@ -8,39 +8,62 @@ import type { VehicleState } from '../../types/occupancy'
 import { costPerBusHour, scheduleFor, type StudioDay } from './studioModel'
 import type { SimbookParams, SimsheetRecord } from './simbook'
 
-/** One Simsheet: its frozen parameters plus the figures the result screens read. */
-export interface SimRun {
-  id: number
-  label: string
-  /** ISO time it ran; `time` is the same as HH:MM. */
-  ranAt: string
+/** This made-up generator, recorded on every Simsheet; results are only reproducible with the same one. */
+export const ENGINE_VERSION = 'maqueta-0.1'
+
+/** One Simsheet: the frozen record plus the figures the result screens read. */
+export interface SimRun extends SimsheetRecord {
+  /** `ranAt` as HH:MM. */
   time: string
   day: StudioDay
   fleet: number
   demandScale: number
   costPerHour: number
-  params: SimbookParams
 }
 
-export function runFromRecord({ id, label, ranAt, params }: SimsheetRecord): SimRun {
-  const at = new Date(ranAt)
+export function runFromRecord(record: SimsheetRecord): SimRun {
+  const at = new Date(record.ranAt)
   const time = Number.isNaN(at.getTime())
     ? '--:--'
     : `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`
   return {
-    id,
-    label,
-    ranAt,
+    ...record,
     time,
-    day: params.day,
-    fleet: params.fleet,
-    demandScale: params.demandScale,
-    costPerHour: costPerBusHour(params.costConfig),
-    params,
+    day: record.params.day,
+    fleet: record.params.fleet,
+    demandScale: record.params.demandScale,
+    costPerHour: costPerBusHour(record.params.costConfig),
   }
 }
 
-export const recordFromRun = ({ id, label, ranAt, params }: SimRun): SimsheetRecord => ({ id, label, ranAt, params })
+export const recordFromRun = ({ id, label, ranAt, ranBy, method, engineVersion, seed, params, results }: SimRun): SimsheetRecord => ({
+  id,
+  label,
+  ranAt,
+  ranBy,
+  method,
+  engineVersion,
+  seed,
+  params,
+  results,
+})
+
+/** Runs the parameters as Simsheet `id`, with a new random seed unless one is given. */
+export function executeRun(id: number, params: SimbookParams, ranBy: string, ranAt = new Date().toISOString(), seed = Math.floor(Math.random() * 2 ** 31)): SimRun {
+  const run = runFromRecord({
+    id,
+    label: `Simsheet ${id}`,
+    ranAt,
+    ranBy,
+    method: 'estandar',
+    engineVersion: ENGINE_VERSION,
+    seed,
+    params,
+    results: { trips: 0, passengers: 0, revenue: 0, cost: 0, margin: 0 },
+  })
+  const { trips, passengers, revenue, cost, margin } = runOutput(run).totals
+  return { ...run, results: { trips, passengers, revenue, cost, margin } }
+}
 
 export type TripDirection = 'IDA' | 'REGRESO'
 
@@ -144,11 +167,11 @@ export interface RunOutput {
 const cache = new Map<string, RunOutput>()
 
 export function runOutput(run: SimRun): RunOutput {
-  const key = `${run.id}:${run.day}:${run.fleet}:${run.demandScale}:${run.costPerHour}`
+  const key = `${run.seed}:${run.day}:${run.fleet}:${run.demandScale}:${run.costPerHour}`
   const hit = cache.get(key)
   if (hit) return hit
 
-  const random = rng(run.id * 7919 + run.fleet * 31)
+  const random = rng(run.seed)
   const schedule = scheduleFor(run.day)
   const first = toMinutes(schedule.firstDeparture)
   const last = toMinutes(schedule.lastDeparture)
@@ -287,10 +310,10 @@ const todayAt = (hours: number, minutes: number) => {
   return at.toISOString()
 }
 
-/** The example Simbook the Studio opens with. */
+/** The example Simbook the Studio opens with (seeds keep the figures it always showed). */
 export const initialRuns: SimRun[] = [
-  runFromRecord({ id: 1, label: 'Simsheet 1', ranAt: todayAt(8, 12), params: { ...defaultParams, fleet: 42 } }),
-  runFromRecord({ id: 2, label: 'Simsheet 2', ranAt: todayAt(9, 40), params: { ...defaultParams, fleet: 30 } }),
+  executeRun(1, { ...defaultParams, fleet: 42 }, 'Guillermo Jiménez', todayAt(8, 12), 9221),
+  executeRun(2, { ...defaultParams, fleet: 30 }, 'Guillermo Jiménez', todayAt(9, 40), 16768),
 ]
 
 export const routeById = (routeId: string) => officialCtpRoutes.find((r) => r.routeId === routeId) ?? officialCtpRoutes[0]

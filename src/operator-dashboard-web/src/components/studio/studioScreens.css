@@ -945,3 +945,39 @@
   top: 0;
   bottom: 0;
 }
+
+/* Read-only instructions while a Simbook has no Simsheets yet. */
+.sv-instructions {
+  max-width: 720px;
+  padding: 20px 26px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #1f2937;
+}
+
+.sv-instructions h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  color: #17375e;
+}
+
+.sv-instructions ol {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.sv-instructions li + li {
+  margin-top: 8px;
+}
+
+/* Values a Simbook did not have: shown until the user accepts the reference values. */
+.sv-missing {
+  background: #fdecec;
+  border-bottom-color: #f2b8b8;
+  color: #7f1d1d;
+}
+
+.sv-missing ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
