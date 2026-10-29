@@ -27,9 +27,11 @@ import {
   SimbookError,
   type SimbookDraft,
   type SimbookMeta,
+  type Provenance,
   type SimbookParams,
   type SimsheetRecord,
 } from './studio/simbook'
+import { autoEntryFor, deriveProvenance, fieldLabel, readField, todayIso } from './studio/wizard/wizardModel'
 import { SimbookInstructions } from './studio/SimbookInstructions'
 import { NewSimbookWizard, type NewSimbookResult } from './studio/wizard/NewSimbookWizard'
 import { canSaveInPlace, openSimbookFile, saveSimbookFile, type SimbookHandle } from './studio/simbookFile'
@@ -255,8 +257,12 @@ export function StudioHub(_props: StudioHubProps) {
   const [savedKey, setSavedKey] = useState(() => simbookKey(null, null, initialRuns.map(recordFromRun)))
   const [meta, setMeta] = useState<SimbookMeta | null>(null)
   const [wizardOpen, setWizardOpen] = useState(false)
-  // Values the open Simbook did not have, filled from the reference values until the user accepts them.
-  const [missing, setMissing] = useState<string[]>([])
+  // Paths of values the open Simbook did not have, filled from the reference values until the user
+  // accepts them or enters their own.
+  const [missingPaths, setMissingPaths] = useState<string[]>([])
+  // The sources recorded for `baseParams`; values changed since then are the operator's (deriveProvenance).
+  const [baseParams, setBaseParams] = useState<SimbookParams>(initialRuns[initialRuns.length - 1].params)
+  const [baseProvenance, setBaseProvenance] = useState<Provenance>(initialRuns[initialRuns.length - 1].provenance)
   const [activeScenarioDay, setActiveScenarioDay] = useState<StudioDay>('semana')
   const [showMembershipView, setShowMembershipView] = useState<boolean>(false)
   const [showBrochureView, setShowBrochureView] = useState<boolean>(() => {
@@ -291,7 +297,15 @@ export function StudioHub(_props: StudioHubProps) {
   // The results are out of date when the parameters on screen are not the ones this Simsheet ran with.
   const stale = currentRun != null && !sameParams(currentRun.params, params)
   // Parameters not run yet are saved as the draft: all of them in a new Simbook, or edits since a Simsheet.
-  const draft: SimbookDraft | null = !currentRun ? { basedOn: null, params } : stale ? { basedOn: currentRun.id, params } : null
+  const provenance = deriveProvenance(baseProvenance, baseParams, params, todayIso())
+  const draft: SimbookDraft | null = !currentRun
+    ? { basedOn: null, params, provenance }
+    : stale
+      ? { basedOn: currentRun.id, params, provenance }
+      : null
+  // A missing value stops counting once the operator enters one.
+  const noCompany = { name: '', concession: '' }
+  const missing = missingPaths.filter((path) => readField(params, noCompany, path) === readField(baseParams, noCompany, path))
   const dirty = simbookKey(meta, draft, runs.map(recordFromRun)) !== savedKey
   const hourCost = costPerBusHour(costConfig)
 
@@ -325,7 +339,10 @@ export function StudioHub(_props: StudioHubProps) {
     const sheets = book.simsheets.map(runFromRecord)
     const last = sheets[sheets.length - 1]
     // The draft's parameters when there is one, otherwise those of the last Simsheet.
-    loadParams(book.draft?.params ?? last.params)
+    const loaded = book.draft ?? last
+    loadParams(loaded.params)
+    setBaseParams(loaded.params)
+    setBaseProvenance(loaded.provenance)
     setRuns(sheets)
     setCurrentRunId(book.draft?.basedOn ?? last?.id ?? 0)
     setFileName(name)
@@ -333,7 +350,7 @@ export function StudioHub(_props: StudioHubProps) {
     // A book that was never saved counts as unsaved changes.
     setSavedKey(saved ? simbookKey(book.meta, book.draft, book.simsheets) : '')
     setMeta(book.meta)
-    setMissing(missingValues)
+    setMissingPaths(missingValues)
     setShowMembershipView(false)
     setActiveTab('resultados')
   }
@@ -349,7 +366,8 @@ export function StudioHub(_props: StudioHubProps) {
   const createSimbook = (r: NewSimbookResult) => {
     setWizardOpen(false)
     const bookMeta: SimbookMeta = { description: r.description, company: r.company, purpose: r.purpose, method: r.method, origins: r.origins }
-    loadSimbook(`${r.name}.simbook`, undefined, { meta: bookMeta, draft: { basedOn: null, params: r.params }, simsheets: [] }, r.missing, false)
+    const newDraft = { basedOn: null, params: r.params, provenance: r.provenance }
+    loadSimbook(`${r.name}.simbook`, undefined, { meta: bookMeta, draft: newDraft, simsheets: [] }, r.missing, false)
     setToast(`${r.name}.simbook creado como borrador · guárdelo con Guardar`)
   }
 
@@ -359,9 +377,17 @@ export function StudioHub(_props: StudioHubProps) {
       const opened = await openSimbookFile()
       if (!opened) return
       const book = parseSimbook(opened.text, defaultParams)
-      loadSimbook(opened.name, opened.handle, book, book.missing)
+      // Only the values on screen (the draft's, or the last Simsheet's) can still be completed;
+      // earlier Simsheets are frozen, so their gaps are only reported.
+      const onScreen = book.draft ? 'Borrador' : book.simsheets[book.simsheets.length - 1].label
+      const current = book.missing.filter((m) => m.where === onScreen).map((m) => m.path)
+      const earlier = book.missing.length - current.length
+      loadSimbook(opened.name, opened.handle, book, current)
       const count = book.simsheets.length
-      setToast(`${opened.name} abierto · ${count === 0 ? 'sin Simsheets' : `${count} Simsheet${count === 1 ? '' : 's'}`}`)
+      setToast(
+        `${opened.name} abierto · ${count === 0 ? 'sin Simsheets' : `${count} Simsheet${count === 1 ? '' : 's'}`}` +
+          (earlier > 0 ? ` · ${earlier} valores faltaban en Simsheets anteriores` : ''),
+      )
     } catch (error) {
       setToast(error instanceof SimbookError ? error.message : 'No se pudo abrir el archivo.')
     }
@@ -431,8 +457,10 @@ export function StudioHub(_props: StudioHubProps) {
       return
     }
     const id = Math.max(0, ...runs.map((r) => r.id)) + 1
-    const run = executeRun(id, params, ACCOUNT.name)
+    const run = executeRun(id, params, provenance, ACCOUNT.name)
     setRuns((prev) => [...prev, run])
+    setBaseParams(params)
+    setBaseProvenance(provenance)
     setCurrentRunId(id)
     setActiveTab('resultados')
     setShowMembershipView(false)
@@ -470,6 +498,15 @@ export function StudioHub(_props: StudioHubProps) {
     }
   }
 
+  // Accepting marks each missing value with the source of its reference value (official or estimated).
+  const acceptReferenceValues = () => {
+    setBaseProvenance((prev) => ({
+      ...prev,
+      ...Object.fromEntries(missing.map((path) => [path, autoEntryFor(path) ?? { source: 'estimado' as const }])),
+    }))
+    setMissingPaths([])
+  }
+
   // Values the open Simbook did not have; shown above the results until the user accepts them.
   const missingBanner = missing.length > 0 && (
     <div className="sv-stale sv-missing">
@@ -477,13 +514,13 @@ export function StudioHub(_props: StudioHubProps) {
         ⚠ Este Simbook no traía {missing.length === 1 ? 'un valor' : `${missing.length} valores`}. Se muestran los valores
         de referencia públicos (ARESEP, CTP) en su lugar. Acéptelos para poder ejecutar; después puede cambiar cualquiera.
         <ul>
-          {missing.slice(0, 6).map((m) => (
-            <li key={m}>{m}</li>
+          {missing.slice(0, 6).map((path) => (
+            <li key={path}>{fieldLabel(path)}</li>
           ))}
           {missing.length > 6 && <li>y {missing.length - 6} más</li>}
         </ul>
       </div>
-      <button type="button" className="sv-btn primary" onClick={() => setMissing([])}>
+      <button type="button" className="sv-btn primary" onClick={acceptReferenceValues}>
         Usar valores de referencia
       </button>
     </div>

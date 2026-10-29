@@ -52,7 +52,7 @@ La regla de fondo es una promesa al operador: **sus datos financieros y sus esce
 
 ## 5. El formato `.simbook`
 
-- Por dentro es texto legible (JSON): la copia de configuración inicial, el borrador pendiente si existe, los parámetros congelados completos de cada Simsheet, resultados y estadísticas, quién la ejecutó y cuándo, configuración de ejecución (método, motor, versión, semilla si aplica) y un **número de versión del formato** para migrar archivos futuros.
+- Por dentro es texto legible (JSON): la copia de configuración inicial, el borrador pendiente si existe, los parámetros congelados completos de cada Simsheet con la fuente de cada valor (referencia pública, estimado, verificado por operador, copiado o sin dato; unidad, fecha y documento de origen), resultados y estadísticas, quién la ejecutó y cuándo, configuración de ejecución (método, motor, versión, semilla si aplica) y un **número de versión del formato** para migrar archivos futuros.
 - Si los archivos crecen, se pueden comprimir (como hace `.xlsx`) sin cambiar nada para el usuario.
 - **Excel es una exportación, no el archivo de trabajo.** El botón Exportar → Excel de la cinta genera un `.xlsx` normal con los resultados de la Simsheet actual, para imprimir o enviar.
 - Windows no reconoce `.simbook`: se abre desde la aplicación. Más adelante, si BusLab se instala como aplicación en Chrome o Edge, puede registrarse para abrir estos archivos con doble clic.

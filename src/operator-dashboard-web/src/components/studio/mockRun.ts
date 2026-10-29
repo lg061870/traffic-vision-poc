@@ -6,7 +6,8 @@ import { officialCtpRoutes, type ManagedRoute } from '../../config/ctpRoutesData
 import type { FeatureCollection } from 'geojson'
 import type { VehicleState } from '../../types/occupancy'
 import { costPerBusHour, scheduleFor, type StudioDay } from './studioModel'
-import type { SimbookParams, SimsheetRecord } from './simbook'
+import type { Provenance, SimbookParams, SimsheetRecord } from './simbook'
+import { autoProvenance } from './wizard/wizardModel'
 
 /** This made-up generator, recorded on every Simsheet; results are only reproducible with the same one. */
 export const ENGINE_VERSION = 'maqueta-0.1'
@@ -36,7 +37,7 @@ export function runFromRecord(record: SimsheetRecord): SimRun {
   }
 }
 
-export const recordFromRun = ({ id, label, ranAt, ranBy, method, engineVersion, seed, params, results }: SimRun): SimsheetRecord => ({
+export const recordFromRun = ({ id, label, ranAt, ranBy, method, engineVersion, seed, params, provenance, results }: SimRun): SimsheetRecord => ({
   id,
   label,
   ranAt,
@@ -45,11 +46,19 @@ export const recordFromRun = ({ id, label, ranAt, ranBy, method, engineVersion, 
   engineVersion,
   seed,
   params,
+  provenance,
   results,
 })
 
-/** Runs the parameters as Simsheet `id`, with a new random seed unless one is given. */
-export function executeRun(id: number, params: SimbookParams, ranBy: string, ranAt = new Date().toISOString(), seed = Math.floor(Math.random() * 2 ** 31)): SimRun {
+/** Runs the parameters as Simsheet `id`, freezing their sources too, with a new random seed unless one is given. */
+export function executeRun(
+  id: number,
+  params: SimbookParams,
+  provenance: Provenance,
+  ranBy: string,
+  ranAt = new Date().toISOString(),
+  seed = Math.floor(Math.random() * 2 ** 31),
+): SimRun {
   const run = runFromRecord({
     id,
     label: `Simsheet ${id}`,
@@ -59,6 +68,7 @@ export function executeRun(id: number, params: SimbookParams, ranBy: string, ran
     engineVersion: ENGINE_VERSION,
     seed,
     params,
+    provenance,
     results: { trips: 0, passengers: 0, revenue: 0, cost: 0, margin: 0 },
   })
   const { trips, passengers, revenue, cost, margin } = runOutput(run).totals
@@ -310,10 +320,15 @@ const todayAt = (hours: number, minutes: number) => {
   return at.toISOString()
 }
 
+/** The example's fleets are the operator's own figures, unlike the rest of its official or estimated values. */
+function exampleProvenance(fleet: number): Provenance {
+  return fleet === defaultParams.fleet ? autoProvenance() : { ...autoProvenance(), fleet: { source: 'operador', unit: 'buses' } }
+}
+
 /** The example Simbook the Studio opens with (seeds keep the figures it always showed). */
 export const initialRuns: SimRun[] = [
-  executeRun(1, { ...defaultParams, fleet: 42 }, 'Guillermo Jiménez', todayAt(8, 12), 9221),
-  executeRun(2, { ...defaultParams, fleet: 30 }, 'Guillermo Jiménez', todayAt(9, 40), 16768),
+  executeRun(1, { ...defaultParams, fleet: 42 }, exampleProvenance(42), 'Guillermo Jiménez', todayAt(8, 12), 9221),
+  executeRun(2, { ...defaultParams, fleet: 30 }, exampleProvenance(30), 'Guillermo Jiménez', todayAt(9, 40), 16768),
 ]
 
 export const routeById = (routeId: string) => officialCtpRoutes.find((r) => r.routeId === routeId) ?? officialCtpRoutes[0]

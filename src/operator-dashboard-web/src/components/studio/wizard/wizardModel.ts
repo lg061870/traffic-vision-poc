@@ -2,15 +2,14 @@
 // Each field says where its automatic value comes from, so the wizard never labels an estimate as
 // official: see docs/supuestos-dashboard-operador.md for every source.
 import type { DayScheduleType } from '../../../config/operatorSettings'
-import type { SimbookParams } from '../simbook'
+import type { FieldSource, Provenance, ProvenanceEntry, SimbookParams } from '../simbook'
+
+export type { FieldSource }
 
 export type SectionId = 'empresa' | 'rutas' | 'flota' | 'frecuencias' | 'costos' | 'demanda'
 
 /** How the user chose to load a section. */
 export type SectionOrigin = 'auto' | 'manual' | 'copy'
-
-/** Where a value came from: official data, a BusLab estimate, the operator, or another Simbook. */
-export type FieldSource = 'publica' | 'estimado' | 'operador' | 'copia' | 'vacio'
 
 export interface FieldDef {
   /** Path in the wizard values: `company.*` for the Simbook's company, otherwise a SimbookParams path. */
@@ -22,6 +21,9 @@ export interface FieldDef {
   auto: 'publica' | 'estimado'
   /** Group heading inside the section (e.g. the day type). */
   group?: string
+  /** Official document behind the automatic value, and its date. */
+  reference?: string
+  date?: string
 }
 
 export interface SectionDef {
@@ -68,7 +70,9 @@ export const SECTIONS: SectionDef[] = [
     title: 'Flota',
     description: 'Cuántos buses tiene la concesión.',
     origins: ['auto', 'manual', 'copy'],
-    fields: [{ path: 'fleet', label: 'Flota autorizada', unit: 'buses', kind: 'number', auto: 'publica' }],
+    fields: [
+      { path: 'fleet', label: 'Flota autorizada', unit: 'buses', kind: 'number', auto: 'publica', reference: 'CTP-DT-DAC-INF-0557-2023', date: '2023' },
+    ],
     autoNote: 'Flota autorizada por el CTP: 39 buses (oficio CTP-DT-DAC-INF-0557-2023).',
   },
   {
@@ -118,7 +122,9 @@ export const SECTIONS: SectionDef[] = [
     fields: [
       { path: 'demandScale', label: 'Escala de demanda', unit: '%', kind: 'percent', auto: 'estimado' },
       ...perDay((day, group) => [
-        { path: `schedules.${day}.dailyRidership`, label: 'Pasajeros por día', unit: 'pasajeros', kind: 'number', auto: day === 'weekday' ? 'publica' : 'estimado', group },
+        day === 'weekday'
+          ? { path: `schedules.${day}.dailyRidership`, label: 'Pasajeros por día', unit: 'pasajeros', kind: 'number', auto: 'publica', group, reference: 'ARESEP RE-0025-IT-2024', date: '2024' }
+          : { path: `schedules.${day}.dailyRidership`, label: 'Pasajeros por día', unit: 'pasajeros', kind: 'number', auto: 'estimado', group },
         { path: `schedules.${day}.seniorShare`, label: 'Adultos mayores', unit: '%', kind: 'percent', auto: 'estimado', group },
         { path: `schedules.${day}.demandFactor`, label: 'Factor de demanda', unit: '×', kind: 'number', auto: 'estimado', group },
         { path: `schedules.${day}.peakMorningFactor`, label: 'Factor pico mañana', unit: '×', kind: 'number', auto: 'estimado', group },
@@ -158,3 +164,45 @@ export function writeParam(params: SimbookParams, path: string, value: string | 
 }
 
 export const sectionOf = (path: string) => SECTIONS.find((s) => s.fields.some((f) => f.path === path))
+
+const PARAM_FIELDS = SECTIONS.flatMap((s) => s.fields.map((field) => ({ field, section: s }))).filter(({ field }) => !field.path.startsWith('company.'))
+
+/** "Sección · Grupo · Campo" for a parameter path; the path itself when the wizard does not ask for it. */
+export function fieldLabel(path: string) {
+  const hit = PARAM_FIELDS.find(({ field }) => field.path === path)
+  return hit ? [hit.section.title, hit.field.group, hit.field.label].filter(Boolean).join(' · ') : path
+}
+
+/** The source of a field's automatic (CTP/ARESEP or estimated) value. */
+export function autoEntry(field: FieldDef): ProvenanceEntry {
+  const entry: ProvenanceEntry = { source: field.auto }
+  if (field.unit) entry.unit = field.unit
+  if (field.date) entry.date = field.date
+  if (field.reference) entry.reference = field.reference
+  return entry
+}
+
+/** Sources when every section is automatic, as in the example Simbook. */
+export const autoProvenance = (): Provenance => Object.fromEntries(PARAM_FIELDS.map(({ field }) => [field.path, autoEntry(field)]))
+
+export const autoEntryFor = (path: string) => {
+  const hit = PARAM_FIELDS.find(({ field }) => field.path === path)
+  return hit ? autoEntry(hit.field) : undefined
+}
+
+/**
+ * The sources of the values on screen: a value that differs from the one the sources were recorded
+ * for was entered by the operator, today.
+ */
+export function deriveProvenance(base: Provenance, baseParams: SimbookParams, params: SimbookParams, today: string): Provenance {
+  const out: Provenance = { ...base }
+  for (const { field } of PARAM_FIELDS) {
+    const company = { name: '', concession: '' }
+    if (readField(params, company, field.path) !== readField(baseParams, company, field.path)) {
+      out[field.path] = { source: 'operador', ...(field.unit ? { unit: field.unit } : {}), date: today }
+    }
+  }
+  return out
+}
+
+export const todayIso = () => new Date().toISOString().slice(0, 10)

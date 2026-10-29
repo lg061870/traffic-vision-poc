@@ -2,12 +2,14 @@
 // and method, then create the Simbook as an initial draft (docs/asistente-nuevo-simbook.md).
 import { useState } from 'react'
 import { defaultParams } from '../mockRun'
-import { parseSimbook, SimbookError, type SimbookParams } from '../simbook'
+import { parseSimbook, SimbookError, type Provenance, type ProvenanceEntry, type SimbookParams } from '../simbook'
 import { openSimbookFile } from '../simbookFile'
 import { routes } from '../studioModel'
 import {
+  autoEntry,
   OFFICIAL_COMPANY,
   readField,
+  todayIso,
   SECTIONS,
   writeParam,
   type Company,
@@ -29,7 +31,9 @@ export interface NewSimbookResult {
   method: 'estandar'
   origins: Record<SectionId, SectionOrigin>
   params: SimbookParams
-  /** Fields left empty, as "Sección · Grupo · Campo". */
+  /** The source of every value the wizard asked for. */
+  provenance: Provenance
+  /** Parameter paths left empty. */
   missing: string[]
 }
 
@@ -68,11 +72,14 @@ const ALL_FIELDS = SECTIONS.flatMap((s) => s.fields)
 interface FieldState {
   value: FieldValue
   source: FieldSource
+  /** Kept for copied values, whose original source travels with them. */
+  entry?: ProvenanceEntry
 }
 
 interface CopySource {
   name: string
   params: SimbookParams
+  provenance: Provenance
   company: Company | null
 }
 
@@ -82,13 +89,13 @@ function initialFields(section: SectionId, origin: SectionOrigin, copy: CopySour
     if (origin === 'manual') out[field.path] = { value: null, source: 'vacio' }
     else if (origin === 'copy' && copy) {
       const value = readField(copy.params, copy.company ?? { name: '', concession: '' }, field.path)
-      out[field.path] = value === null || value === '' ? { value: null, source: 'vacio' } : { value, source: 'copia' }
+      // A copied value keeps the source the other Simbook recorded; without one it is just "copied".
+      const entry = copy.provenance[field.path] ?? { source: 'copia', ...(field.unit ? { unit: field.unit } : {}), reference: copy.name }
+      out[field.path] = value === null || value === '' ? { value: null, source: 'vacio' } : { value, source: entry.source, entry }
     } else out[field.path] = { value: readField(defaultParams, OFFICIAL_COMPANY, field.path), source: field.auto }
   }
   return out
 }
-
-const sectionTitle = (id: SectionId) => SECTIONS.find((s) => s.id === id)!.title
 
 export function NewSimbookWizard({ onCancel, onCreate }: Props) {
   const [step, setStep] = useState(0)
@@ -121,7 +128,12 @@ export function NewSimbookWizard({ onCancel, onCreate }: Props) {
       if (!opened) return
       const book = parseSimbook(opened.text, defaultParams)
       const last = book.simsheets[book.simsheets.length - 1]
-      const source: CopySource = { name: opened.name, params: book.draft?.params ?? last.params, company: book.meta?.company ?? null }
+      const source: CopySource = {
+        name: opened.name,
+        params: book.draft?.params ?? last.params,
+        provenance: book.draft?.provenance ?? last.provenance,
+        company: book.meta?.company ?? null,
+      }
       setCopy(source)
       for (const s of SECTIONS) if (origins[s.id] === 'copy' || s.id === thenSection) setOrigin(s.id, 'copy', source)
     } catch (e) {
@@ -143,9 +155,16 @@ export function NewSimbookWizard({ onCancel, onCreate }: Props) {
     setFields((prev) => ({ ...prev, [field.path]: { value, source: value === null ? 'vacio' : 'operador' } }))
   }
 
-  const emptyFields = ALL_FIELDS.filter((f) => fields[f.path]?.value === null)
-  const missingLabel = (f: FieldDef) =>
-    [sectionTitle(SECTIONS.find((s) => s.fields.includes(f))!.id), f.group, f.label].filter(Boolean).join(' · ')
+  // The company is not a simulation input, so leaving it empty never blocks a run.
+  const emptyFields = ALL_FIELDS.filter((f) => fields[f.path]?.value === null && !f.path.startsWith('company.'))
+
+  const entryFor = (f: FieldDef): ProvenanceEntry => {
+    const state = fields[f.path]
+    if (state?.entry) return state.entry
+    const source = state?.source ?? 'vacio'
+    if (source === 'publica' || source === 'estimado') return autoEntry(f)
+    return { source, ...(f.unit ? { unit: f.unit } : {}), ...(source === 'operador' ? { date: todayIso() } : {}) }
+  }
 
   const create = () => {
     let params = defaultParams
@@ -157,7 +176,8 @@ export function NewSimbookWizard({ onCancel, onCreate }: Props) {
       else params = writeParam(params, f.path, value)
     }
     const clean = name.trim().replace(/[\\/:*?"<>|]+/g, '_') || 'Mi_escenario'
-    onCreate({ name: clean, description: description.trim(), company, purpose, method: 'estandar', origins, params, missing: emptyFields.map(missingLabel) })
+    const provenance: Provenance = Object.fromEntries(ALL_FIELDS.filter((f) => !f.path.startsWith('company.')).map((f) => [f.path, entryFor(f)]))
+    onCreate({ name: clean, description: description.trim(), company, purpose, method: 'estandar', origins, params, provenance, missing: emptyFields.map((f) => f.path) })
   }
 
   const counts = (section: SectionId) => {

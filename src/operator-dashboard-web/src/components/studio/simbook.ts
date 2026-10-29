@@ -17,11 +17,27 @@ export interface SimbookParams {
   schedules: Record<DayScheduleType, DayScheduleConfig>
 }
 
+/** Where a value came from: official data, a BusLab estimate, the operator, another Simbook, or nobody yet. */
+export type FieldSource = 'publica' | 'estimado' | 'operador' | 'copia' | 'vacio'
+
+/** The source of one parameter value, keyed by its path (e.g. "costConfig.dieselPricePerLiter"). */
+export interface ProvenanceEntry {
+  source: FieldSource
+  unit?: string
+  /** Date the value refers to: the official document's date, or when the operator entered it. */
+  date?: string
+  /** Document or Simbook it comes from, e.g. "CTP-DT-DAC-INF-0557-2023". */
+  reference?: string
+}
+
+export type Provenance = Record<string, ProvenanceEntry>
+
 /** Parameters being edited and not run yet. A new Simbook is only a draft until its first run. */
 export interface SimbookDraft {
   /** The Simsheet the draft started from; null for the initial draft. */
   basedOn: number | null
   params: SimbookParams
+  provenance: Provenance
 }
 
 export interface SimsheetResults {
@@ -43,6 +59,8 @@ export interface SimsheetRecord {
   engineVersion: string
   seed: number
   params: SimbookParams
+  /** Sources of the values, frozen with them. */
+  provenance: Provenance
   results: SimsheetResults
 }
 
@@ -65,10 +83,15 @@ export interface Simbook {
   simsheets: SimsheetRecord[]
 }
 
+/** A value a Simbook did not have: in which Simsheet (or "Borrador") and at which parameter path. */
+export interface MissingValue {
+  where: string
+  path: string
+}
+
 /** A Simbook as read from disk, with the values the file did not have. */
 export interface OpenedBook extends Simbook {
-  /** Where each missing value was expected, e.g. "Simsheet 2 · costConfig.dieselPricePerLiter". */
-  missing: string[]
+  missing: MissingValue[]
 }
 
 /** Same values, regardless of key order. */
@@ -125,7 +148,7 @@ export function parseSimbook(text: string, reference: SimbookParams): OpenedBook
     throw new SimbookError('Este Simbook fue guardado con una versión más nueva de BusLab. Actualice la página e intente de nuevo.')
   }
 
-  const missing: string[] = []
+  const missing: MissingValue[] = []
   const rawSheets = Array.isArray(book.simsheets) ? book.simsheets : []
   const simsheets: SimsheetRecord[] = rawSheets.map((s, i) => {
     const label = typeof s?.label === 'string' ? s.label : `Simsheet ${i + 1}`
@@ -138,6 +161,7 @@ export function parseSimbook(text: string, reference: SimbookParams): OpenedBook
       engineVersion: typeof s?.engineVersion === 'string' ? s.engineVersion : '',
       seed: typeof s?.seed === 'number' ? s.seed : 0,
       params: readParams(s?.params, reference, label, missing),
+      provenance: readProvenance(s?.provenance),
       results: { trips: 0, passengers: 0, revenue: 0, cost: 0, margin: 0, ...((s?.results ?? {}) as Partial<SimsheetResults>) },
     }
   })
@@ -147,6 +171,7 @@ export function parseSimbook(text: string, reference: SimbookParams): OpenedBook
     ? {
         basedOn: typeof rawDraft.basedOn === 'number' ? rawDraft.basedOn : null,
         params: readParams(rawDraft.params, reference, 'Borrador', missing),
+        provenance: readProvenance(rawDraft.provenance),
       }
     : null
   if (!draft && simsheets.length === 0) throw new SimbookError('El Simbook está vacío: no tiene borrador ni Simsheets.')
@@ -162,9 +187,9 @@ export function parseSimbook(text: string, reference: SimbookParams): OpenedBook
   }
 }
 
-function readParams(value: unknown, reference: SimbookParams, where: string, missing: string[]): SimbookParams {
+function readParams(value: unknown, reference: SimbookParams, where: string, missing: MissingValue[]): SimbookParams {
   const p = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
-  const note = (path: string) => missing.push(`${where} · ${path}`)
+  const note = (path: string) => missing.push({ where, path })
 
   const num = (v: unknown, fallback: number, path: string) => {
     if (typeof v === 'number' && Number.isFinite(v)) return v
@@ -213,4 +238,21 @@ function readMeta(value: unknown): SimbookMeta | null {
     method: 'estandar',
     origins: m.origins && typeof m.origins === 'object' ? m.origins : {},
   }
+}
+
+const SOURCES: FieldSource[] = ['publica', 'estimado', 'operador', 'copia', 'vacio']
+
+/** Keeps only well-formed entries; a file without sources (older ones) simply has none. */
+function readProvenance(value: unknown): Provenance {
+  const out: Provenance = {}
+  if (!value || typeof value !== 'object') return out
+  for (const [path, raw] of Object.entries(value as Record<string, unknown>)) {
+    const e = raw as Partial<ProvenanceEntry> | null
+    if (!e || !SOURCES.includes(e.source as FieldSource)) continue
+    out[path] = { source: e.source as FieldSource }
+    if (typeof e.unit === 'string') out[path].unit = e.unit
+    if (typeof e.date === 'string') out[path].date = e.date
+    if (typeof e.reference === 'string') out[path].reference = e.reference
+  }
+  return out
 }
