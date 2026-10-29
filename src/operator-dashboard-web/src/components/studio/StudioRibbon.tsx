@@ -19,6 +19,7 @@ export type ResultReport =
   | 'espera'
   | 'mapa'
   | 'cumplimiento'
+  | 'parametros'
 
 export type CostPreset = 'oficial' | 'diesel900' | 'flotaAntigua' | 'electrico'
 export type ScenarioPreset = 'official' | 'highDemand' | 'optimized' | 'pilot10'
@@ -349,6 +350,9 @@ export function StudioRibbon(p: StudioRibbonProps) {
             <BigButton {...report('pelotonamiento', 'bunching', <>Peloto-<br />namiento</>, 'Buses que viajan juntos')} />
             <BigButton {...report('carga', 'loadProfile', <>Perfil de<br />carga</>, 'Pasajeros a bordo a lo largo de la ruta')} />
             <BigButton {...report('espera', 'hourglass', <>Espera y<br />regularidad</>, 'Intervalos y espera en cada parada')} />
+          </Group>
+          <Group label="Simsheet">
+            <BigButton {...report('parametros', 'sliders', 'Parámetros', 'Los parámetros con que corrió esta Simsheet, comparados con la Simsheet 1')} />
           </Group>
           <Group label="Regulación">
             <BigButton {...report('cumplimiento', 'shield', <>Cumplimiento<br />CTP</>, 'Frecuencias y flota contra lo autorizado')} />

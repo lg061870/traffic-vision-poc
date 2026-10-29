@@ -52,6 +52,7 @@ import { EspacioTiempoView } from './studio/results/EspacioTiempoView'
 import { EsperaView } from './studio/results/EsperaView'
 import { HorarioView } from './studio/results/HorarioView'
 import { MapaReplayView } from './studio/results/MapaReplayView'
+import { SimsheetParamsView } from './studio/results/SimsheetParamsView'
 import { PerfilCargaView } from './studio/results/PerfilCargaView'
 import { TurnosView } from './studio/results/TurnosView'
 import { BrochureView } from './BrochureView'
@@ -430,6 +431,19 @@ export function StudioHub(_props: StudioHubProps) {
     clearCompanyParams()
     setSavedParams(null)
     setToast('Parámetros guardados borrados de este navegador')
+  }
+
+  // A draft from a Simsheet: its parameters come back on screen, ready to edit; the Simsheet is untouched.
+  const editInDraft = (run: SimRun) => {
+    const unrun = !runs.some((r) => sameParams(r.params, params))
+    if (unrun && !window.confirm(`Ya hay un borrador con cambios sin ejecutar. ¿Reemplazarlo con los parámetros de ${run.label}?`)) return
+    loadParams(run.params)
+    setBaseParams(run.params)
+    setBaseProvenance(run.provenance)
+    setMissingPaths([])
+    setCurrentRunId(run.id)
+    setActiveTab('despacho')
+    setToast(`Borrador basado en ${run.label}: cambie los parámetros y ejecute para crear la Simsheet ${Math.max(...runs.map((r) => r.id)) + 1}`)
   }
 
   const openSimbook = async () => {
@@ -987,6 +1001,9 @@ export function StudioHub(_props: StudioHubProps) {
               {report === 'espera' && <EsperaView output={output} />}
               {report === 'mapa' && <MapaReplayView output={output} mode="mapa" />}
               {report === 'cumplimiento' && <CumplimientoView output={output} />}
+              {report === 'parametros' && (
+                <SimsheetParamsView run={currentRun} baseline={runs[0]} company={meta?.company ?? null} onEditInDraft={() => editInDraft(currentRun)} />
+              )}
               {report === 'rentabilidad' && (
 
             <main className="fs-stage">
